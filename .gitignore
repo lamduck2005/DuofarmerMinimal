@@ -1,0 +1,3 @@
+# Bỏ file chứa thông tin nhạy cảm, token, session, user
+account.json
+.cursor/
