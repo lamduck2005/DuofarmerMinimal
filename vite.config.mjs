@@ -9,11 +9,11 @@ export default defineConfig({
         name: 'DuoFarmer',
         namespace: 'https://duo-farmer.vercel.app',
         version: '1.3',
-        description: '[ MINIMAL UI ] DuoFarmer is a tool that helps you earn XP in Duolingo at blazing speed.',
+        description: 'DuoFarmer is a tool that helps you farm XP, farm Streak, farm Gems or even repair frozen streak on Duolingo!.',
         author: 'Lamduck',
         match: ['https://*.duolingo.com/*'],
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=duolingo.com',
-        grant: ['none'],
+        grant: ['GM_log'],
         license: 'none',
       },
       build: {
@@ -24,6 +24,7 @@ export default defineConfig({
       },
     }),
   ],
+  
 });
 
 
