@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DuoFarmer
 // @namespace    https://duo-farmer.vercel.app
-// @version      1.3
+// @version      1.3.1
 // @author       Lamduck
 // @description  DuoFarmer is a tool that helps you farm XP, farm Streak, farm Gems or even repair frozen streak on Duolingo!.
 // @license      none
