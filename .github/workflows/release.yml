@@ -8,6 +8,10 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write      # Tạo releases
+      packages: write      # Upload packages
+      id-token: write      # OIDC token
 
     steps:
     - name: Checkout code
