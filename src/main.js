@@ -9,10 +9,34 @@ let jwt, defaultHeaders, userInfo, sub, apiService;
 let isRunning = false;
 let shadowRoot = null;
 
+// const BONUS_XP_CONFIG = {
+//   "enableBonusPoints": true, //3xp
+//   "hasBoost": true, //x2 xp session
+//   hasXpBoost: true, //x2 xp story
+//   happyHourBonusXp: 449 // +449 xp story
+// }
+
+
 const OPTIONS = [
+	{ type: 'separator', label: '═══════ GEM FARMING ═══════', value: '', disabled: true },
 	{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
-	{ type: 'xp', label: 'XP 10 (session) (safe)', value: 'session', amount: 10 },
-	{ type: 'xp', label: 'XP 499 (story) (Learning English only)', value: 'story', amount: 499 },
+	{ type: 'separator', label: '═══════ XP SESSION FARMING ═══════', value: '', disabled: true },
+	{ type: 'separator', label: '(slow but safe)', value: '', disabled: true },
+	{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
+	{ type: 'xp', label: 'XP 13', value: 'session', amount: 13, config: { enableBonusPoints: true } },
+	{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: {hasBoost: true } },
+	{ type: 'xp', label: 'XP 26', value: 'session', amount: 26, config: { enableBonusPoints: true, hasBoost: true } },
+	{ type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10} },
+	{ type: 'separator', label: '═══════ XP STORY FARMING ═══════', value: '', disabled: true },
+	{ type: 'separator', label: '(fast, not safe, English only) ', value: '', disabled: true },
+	{ type: 'xp', label: 'XP 50', value: 'story', amount: 0, config: {} },
+	{ type: 'xp', label: 'XP 90 ', value: 'story', amount: 0, config: { hasXpBoost: true } },
+	{ type: 'xp', label: 'XP 100 ', value: 'story', amount: 100, config: { happyHourBonusXp: 50 } },
+	{ type: 'xp', label: 'XP 200 ', value: 'story', amount: 200, config: { happyHourBonusXp: 150 } },
+	{ type: 'xp', label: 'XP 300 ', value: 'story', amount: 300, config: { happyHourBonusXp: 250 } },
+	{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { happyHourBonusXp: 350 } },
+	{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { happyHourBonusXp: 449 } },
+	{ type: 'separator', label: '═══════ STREAK FARMING ═══════', value: '', disabled: true },
 	{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
 ];
 
@@ -136,6 +160,7 @@ const addEventStartBtn = () => {
 			amount: Number(selected.getAttribute('data-amount')),
 			value: selected.value,
 			label: selected.textContent,
+			config: selected.getAttribute('data-config') ? JSON.parse(selected.getAttribute('data-config')) : {},
 		};
 		await farmSelectedOption(optionData);
 	});
@@ -163,6 +188,8 @@ const populateOptions = () => {
 		option.textContent = opt.label;
 		option.setAttribute('data-type', opt.type);
 		if (opt.amount != null) option.setAttribute('data-amount', String(opt.amount));
+		if (opt.config) option.setAttribute('data-config', JSON.stringify(opt.config));
+		if (opt.disabled) option.disabled = true;
 		select.appendChild(option);
 	});
 };
@@ -219,14 +246,14 @@ const gemFarmingLoop = async () => {
 	}
 };
 
-const xpFarmingLoop = async (value, amount) => {
+const xpFarmingLoop = async (value, amount, config = {}) => {
 	while (isRunning) {
 		try {
 			let response;
 			if (value === 'session') {
-				response = await apiService.farmSessionOnce();
+				response = await apiService.farmSessionOnce(config);
 			} else if (value === 'story') {
-				response = await apiService.farmStoryOnce(amount);
+				response = await apiService.farmStoryOnce(config);
 			}
 			if (response.status > 400) {
 				updateNotify(`Something went wrong! Pls try other farming methods.\nIf you are using story method, make sure you are on English course (learning language == en)!`);
@@ -251,7 +278,7 @@ const streakFarmingLoop = async () => {
 	let currentTimestamp = hasStreak ? startFarmStreakTimestamp - 86400 : startFarmStreakTimestamp;
 	while (isRunning) {
 		try {
-			const sessionRes = await apiService.farmSessionOnce(currentTimestamp, currentTimestamp + 60);
+			const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + 60 });
 			if (sessionRes) {
 				currentTimestamp -= 86400;
 				updateFarmResult('streak', 1);
@@ -270,13 +297,13 @@ const streakFarmingLoop = async () => {
 };
 
 const farmSelectedOption = async (option) => {
-	const { type, value, amount } = option;
+	const { type, value, amount, config } = option;
 	switch (type) {
 		case 'gem':
 			gemFarmingLoop();
 			break;
 		case 'xp':
-			xpFarmingLoop(value, amount);
+			xpFarmingLoop(value, amount, config);
 			break;
 		case 'streak':
 			streakFarmingLoop();

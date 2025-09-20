@@ -38,7 +38,7 @@ export class ApiService {
         return await this.sendRequest({ url: patchUrl, payload: patchData, headers: this.defaultHeaders, method: 'PATCH' });
     }
 
-    async farmStoryOnce(amount) {
+    async farmStoryOnce(config = {}) {
         const startTime = getCurrentUnixTimestamp();
         const fromLanguage = this.userInfo.fromLanguage;
         const completeUrl = `https://stories.duolingo.com/api2/stories/en-${fromLanguage}-the-passport/complete`;
@@ -58,12 +58,15 @@ export class ApiService {
             fromLanguage: fromLanguage,
             learningLanguage: 'en',
             hasXpBoost: false,
-            happyHourBonusXp: 449,
+            // happyHourBonusXp: 449,
+            ...config,
         };
         return await this.sendRequest({ url: completeUrl, payload, headers: this.defaultHeaders, method: 'POST' });
     }
 
-    async farmSessionOnce(startTime = getCurrentUnixTimestamp(), endTime = startTime + 60) {
+    async farmSessionOnce(config = {}) {
+        const startTime = config.startTime || getCurrentUnixTimestamp();
+        const endTime = config.endTime || startTime + 60;
         const sessionPayload = {
             challengeTypes: [
                 'assist', 'characterIntro', 'characterMatch', 'characterPuzzle', 'characterSelect', 'characterTrace', 'characterWrite',
@@ -95,6 +98,7 @@ export class ApiService {
             failed: false,
             maxInLessonStreak: 9,
             shouldLearnThings: true,
+            ...config,
         };
         const updateRes = await this.sendRequest({ url: `https://www.duolingo.com/2017-06-30/sessions/${sessionData.id}`, payload: updateSessionPayload, headers: this.defaultHeaders, method: 'PUT' });
         return updateRes;
