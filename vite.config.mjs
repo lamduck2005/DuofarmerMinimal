@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
 
+// Lấy version từ environment variable hoặc fallback
+const version = process.env.VERSION || '1.3.1';
+
 export default defineConfig({
   plugins: [
     monkey({
@@ -8,7 +11,7 @@ export default defineConfig({
       userscript: {
         name: 'DuoFarmer',
         namespace: 'https://duo-farmer.vercel.app',
-        version: '1.3.1',
+        version: version,  // Sử dụng biến thay vì hardcode
         description: 'DuoFarmer is a tool that helps you farm XP, farm Streak, farm Gems or even repair frozen streak on Duolingo!.',
         author: 'Lamduck',
         match: ['https://*.duolingo.com/*'],
