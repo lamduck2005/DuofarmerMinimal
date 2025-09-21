@@ -40,21 +40,26 @@ const OPTIONS = [
 	{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
 ];
 
-const getElements = () => ({
-	startBtn: shadowRoot.getElementById('start-btn'),
-	stopBtn: shadowRoot.getElementById('stop-btn'),
-	select: shadowRoot.getElementById('select-option'),
-	floatingBtn: shadowRoot.getElementById('floating-btn'),
-	container: shadowRoot.getElementById('container'),
-	overlay: shadowRoot.getElementById('overlay'),
-	notify: shadowRoot.getElementById('notify'),
-	username: shadowRoot.getElementById('username'),
-	from: shadowRoot.getElementById('from'),
-	learn: shadowRoot.getElementById('learn'),
-	streak: shadowRoot.getElementById('streak'),
-	gem: shadowRoot.getElementById('gem'),
-	xp: shadowRoot.getElementById('xp'),
-});
+const getElements = () => {
+	return {
+		startBtn: shadowRoot.getElementById('start-btn'),
+		stopBtn: shadowRoot.getElementById('stop-btn'),
+		select: shadowRoot.getElementById('select-option'),
+		floatingBtn: shadowRoot.getElementById('floating-btn'),
+		container: shadowRoot.getElementById('container'),
+		overlay: shadowRoot.getElementById('overlay'),
+		notify: shadowRoot.getElementById('notify'),
+		username: shadowRoot.getElementById('username'),
+		from: shadowRoot.getElementById('from'),
+		learn: shadowRoot.getElementById('learn'),
+		streak: shadowRoot.getElementById('streak'),
+		gem: shadowRoot.getElementById('gem'),
+		xp: shadowRoot.getElementById('xp'),
+		settingsBtn: shadowRoot.getElementById('settings-btn'),
+		settingsContainer: shadowRoot.getElementById('settings-container'),
+		settingsClose: shadowRoot.getElementById('settings-close'),
+	};
+};
 
 const setRunningState = (running) => {
 	isRunning = running;
@@ -107,6 +112,12 @@ const initInterface = () => {
 
 	document.body.appendChild(container);
 
+	// Hide settings container initially
+	const settingsContainer = shadowRoot.getElementById('settings-container');
+	if (settingsContainer) {
+		settingsContainer.style.display = 'none';
+	}
+
 	// Validate required elements exist
 	const requiredElements = [
 		'start-btn', 'stop-btn', 'select-option', 'floating-btn',
@@ -120,19 +131,37 @@ const initInterface = () => {
 	}
 };
 
+// UI toggle helpers
+const showElement = (element) => {
+	if (element) element.style.display = 'flex';
+};
+
+const hideElement = (element) => {
+	if (element) element.style.display = 'none';
+};
+
+const toggleModal = (modalElement, mainElement) => {
+	return {
+		show: () => {
+			hideElement(mainElement);
+			showElement(modalElement);
+		},
+		hide: () => {
+			hideElement(modalElement);
+			showElement(mainElement);
+		}
+	};
+};
+
 const setInterfaceVisible = (visible) => {
 	const { container, overlay } = getElements();
-	container.style.display = visible ? 'flex' : 'none';
-	overlay.style.display = visible ? 'block' : 'none';
-};
-
-const isInterfaceVisible = () => {
-	const { container } = getElements();
-	return container.style.display !== 'none' && container.style.display !== '';
-};
-
-const toggleInterface = () => {
-	setInterfaceVisible(!isInterfaceVisible());
+	if (visible) {
+		showElement(container);
+		showElement(overlay);
+	} else {
+		hideElement(container);
+		hideElement(overlay);
+	}
 };
 
 const addEventFloatingBtn = () => {
@@ -173,10 +202,28 @@ const addEventStopBtn = () => {
 	});
 };
 
+const isInterfaceVisible = () => {
+	const { container } = getElements();
+	return container.style.display !== 'none' && container.style.display !== '';
+};
+
+const toggleInterface = () => {
+	setInterfaceVisible(!isInterfaceVisible());
+};
+
+const addEventSettings = () => {
+	const { settingsBtn, settingsContainer, settingsClose, container } = getElements();
+	const settingsModal = toggleModal(settingsContainer, container);
+
+	settingsBtn.addEventListener('click', settingsModal.show);
+	settingsClose.addEventListener('click', settingsModal.hide);
+};
+
 const addEventListeners = () => {
 	addEventFloatingBtn();
 	addEventStartBtn();
 	addEventStopBtn();
+	addEventSettings();
 };
 
 const populateOptions = () => {
@@ -329,9 +376,9 @@ const initVariables = async () => {
 	try {
 		initInterface();
 		setInterfaceVisible(false);
-		addEventListeners();
 		await initVariables();
 		updateUserInfo();
+		addEventListeners();
 	} catch (err) {
 		logError(err, 'init main.js');
 	}

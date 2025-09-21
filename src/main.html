@@ -1,7 +1,8 @@
 <div id="overlay"></div>
 <div id="container">
   <div id="header">
-    <span class="label">Duofarmer minimal UI</span>
+    <span class="label">Duofarmer</span>
+    <button id="settings-btn">⚙️</button>
   </div>
   <div id="body">
     <table id="table-main" class="table">
@@ -55,6 +56,93 @@
     >
     <a href="https://t.me/duofarmer" target="_blank">Telegram</a>
     <a href="https://duo-farmer.vercel.app" target="_blank">Homepage</a>
+  </div>
+</div>
+<div id="settings-container">
+  <div id="settings-menu" class="modal-content">
+    <div class="modal-header">
+      <span class="label">Settings</span>
+      <button id="settings-close" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-group">
+        <h3>General</h3>
+        <label class="setting-item">
+          <span>Auto start farming</span>
+          <input type="checkbox" id="auto-start">
+        </label>
+        <label class="setting-item">
+          <span>Sound notification</span>
+          <input type="checkbox" id="sound-notification">
+        </label>
+        <label class="setting-item">
+          <span>Username</span>
+          <input type="text" id="custom-username" placeholder="Enter username">
+        </label>
+        <label class="setting-item">
+          <span>Language</span>
+          <select id="language-select">
+            <option value="en">English</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="es">Español</option>
+          </select>
+        </label>
+        <label class="setting-item">
+          <span>Quick actions</span>
+          <button id="clear-data" class="setting-btn">Clear Data</button>
+        </label>
+      </div>
+      <div class="settings-group">
+        <h3>Performance</h3>
+        <label class="setting-item">
+          <span>Delay time (ms):</span>
+          <input type="number" id="delay-time" min="100" max="5000" value="500">
+        </label>
+        <label class="setting-item">
+          <span>Max retries</span>
+          <input type="number" id="max-retries" min="1" max="10" value="3">
+        </label>
+        <label class="setting-item">
+          <span>Timeout (sec)</span>
+          <input type="number" id="timeout" min="5" max="60" value="30">
+        </label>
+        <label class="setting-item">
+          <span>Connection mode</span>
+          <select id="connection-mode">
+            <option value="fast">Fast</option>
+            <option value="normal">Normal</option>
+            <option value="slow">Slow</option>
+          </select>
+        </label>
+      </div>
+      <div class="settings-group">
+        <h3>Interface</h3>
+        <label class="setting-item">
+          <span>Dark mode</span>
+          <input type="checkbox" id="dark-mode">
+        </label>
+        <label class="setting-item">
+          <span>Compact UI</span>
+          <input type="checkbox" id="compact-ui">
+        </label>
+        <label class="setting-item">
+          <span>Show progress bar</span>
+          <input type="checkbox" id="show-progress">
+        </label>
+        <label class="setting-item">
+          <span>Font size</span>
+          <select id="font-size">
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+          </select>
+        </label>
+        <label class="setting-item">
+          <span>Reset theme</span>
+          <button id="reset-theme" class="setting-btn">Reset</button>
+        </label>
+      </div>
+    </div>
   </div>
 </div>
 <div id="floating-btn">🐸</div>
