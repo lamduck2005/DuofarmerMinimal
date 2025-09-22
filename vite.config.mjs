@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
 
 // Lấy version từ environment variable hoặc fallback
-const version = process.env.VERSION || '1.3.1';
+const version = process.env.VERSION || '1.0.0';
 
 export default defineConfig({
   plugins: [

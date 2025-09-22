@@ -46,16 +46,9 @@
       <button id="stop-btn" hidden>Stop</button>
     </div>
     <div id="notify">High ban risk! Use with caution.<br /></div>
-    <a id="blank-page-link" href="https://www.duolingo.com/errors/404.html"
-      >Blank page (click here)</a
-    >
   </div>
   <div id="footer">
-    <a href="https://greasyfork.org/vi/scripts/528621-duofarmer" target="_blank"
-      >Greasyfork</a
-    >
-    <a href="https://t.me/duofarmer" target="_blank">Telegram</a>
-    <a href="https://duo-farmer.vercel.app" target="_blank">Homepage</a>
+    <span class="label">u gay 💔</span>
   </div>
 </div>
 <div id="settings-container">
@@ -67,81 +60,109 @@
     <div class="modal-body">
       <div class="settings-group">
         <h3>General</h3>
-        <label class="setting-item">
-          <span>Auto start farming</span>
+        <div class="setting-item">
+          <span>Auto open UI onload</span>
+          <input type="checkbox" id="auto-open-ui">
+        </div>
+        <div class="setting-item">
+          <span>Auto start farming onload</span>
           <input type="checkbox" id="auto-start">
-        </label>
-        <label class="setting-item">
-          <span>Sound notification</span>
-          <input type="checkbox" id="sound-notification">
-        </label>
-        <label class="setting-item">
-          <span>Username</span>
-          <input type="text" id="custom-username" placeholder="Enter username">
-        </label>
-        <label class="setting-item">
-          <span>Language</span>
-          <select id="language-select">
-            <option value="en">English</option>
-            <option value="vi">Tiếng Việt</option>
-            <option value="es">Español</option>
+        </div>
+        <div class="setting-item">
+          <span>Default farming option</span>
+          <select id="default-option">
+            <!-- option auto -->
           </select>
-        </label>
-        <label class="setting-item">
-          <span>Quick actions</span>
-          <button id="clear-data" class="setting-btn">Clear Data</button>
-        </label>
+        </div>
+        <div class="setting-item">
+          <span>Hide username</span>
+          <input type="checkbox" id="hide-username">
+        </div>
+        <div class="setting-item">
+          <span>Keep screen on</span>
+          <input type="checkbox" id="keep-screen-on">
+        </div>
       </div>
-      <div class="settings-group">
-        <h3>Performance</h3>
-        <label class="setting-item">
+      <div class="settings-group disabled">
+        <h3>Performance (coming soon)</h3>
+        <div class="setting-item">
           <span>Delay time (ms):</span>
-          <input type="number" id="delay-time" min="100" max="5000" value="500">
-        </label>
-        <label class="setting-item">
-          <span>Max retries</span>
-          <input type="number" id="max-retries" min="1" max="10" value="3">
-        </label>
-        <label class="setting-item">
-          <span>Timeout (sec)</span>
-          <input type="number" id="timeout" min="5" max="60" value="30">
-        </label>
-        <label class="setting-item">
-          <span>Connection mode</span>
-          <select id="connection-mode">
-            <option value="fast">Fast</option>
-            <option value="normal">Normal</option>
-            <option value="slow">Slow</option>
-          </select>
-        </label>
+          <input type="number" id="delay-time" min="300" max="10000" value="500">
+        </div>
+        <div class="setting-item">
+          <span>Retry time (ms):</span>
+          <input type="number" id="retry-time" min="300" max="10000" value="1000">
+        </div>
+        <div class="setting-item">
+          <span>Auto stop after (min) (set 0 for unlimited)</span>
+          <input type="number" id="auto-stop-time" min="0" max="60" value="0">
+        </div>
       </div>
-      <div class="settings-group">
-        <h3>Interface</h3>
-        <label class="setting-item">
+      <div class="settings-group disabled">
+        <h3>Interface (coming soon)</h3>
+        <div class="setting-item">
           <span>Dark mode</span>
           <input type="checkbox" id="dark-mode">
-        </label>
-        <label class="setting-item">
+        </div>
+        <div class="setting-item">
           <span>Compact UI</span>
           <input type="checkbox" id="compact-ui">
-        </label>
-        <label class="setting-item">
+        </div>
+        <div class="setting-item">
           <span>Show progress bar</span>
           <input type="checkbox" id="show-progress">
-        </label>
-        <label class="setting-item">
+        </div>
+        <div class="setting-item">
           <span>Font size</span>
           <select id="font-size">
             <option value="small">Small</option>
             <option value="medium">Medium</option>
             <option value="large">Large</option>
           </select>
-        </label>
-        <label class="setting-item">
+        </div>
+        <div class="setting-item">
           <span>Reset theme</span>
           <button id="reset-theme" class="setting-btn">Reset</button>
-        </label>
+        </div>
       </div>
+      <div class="settings-group">
+        <h3>Advanced</h3>
+        <div class="setting-item">
+          <span>Get ur JWT token</span>
+          <button id="get-jwt-token" class="setting-btn">Get Token</button>
+        </div>
+        <div class="setting-item">
+          <span>Quick logout</span>
+          <button id="quick-logout" class="setting-btn">Logout</button>
+        </div>
+        <div class="setting-item">
+          <span>Reset setting</span>
+          <button id="reset-setting" class="setting-btn">Reset</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <h3>Others</h3>
+        <div class="setting-item">
+          <span>Blank page (best performance)</span>
+          <a href="https://www.duolingo.com/errors/404.html" target="_blank">Here</a>
+        </div>
+        <div class="setting-item">
+          <span>Greasyfork</span>
+          <a href="https://greasyfork.org/vi/scripts/528621-duofarmer" target="_blank">Here</a>
+        </div>
+        <div class="setting-item">
+          <span>Telegram</span>
+          <a href="https://t.me/duofarmer" target="_blank">Here</a>
+        </div>
+        <div class="setting-item">
+          <span>Homepage</span>
+          <a href="https://duo-farmer.vercel.app" target="_blank">Here</a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span></span>
+      <button id="save-settings" class="save-btn">Save</button>
     </div>
   </div>
 </div>

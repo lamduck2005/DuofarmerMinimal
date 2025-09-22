@@ -2,12 +2,14 @@ import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { ApiService } from './service/api.js';
 import { delay, toTimestamp, getCurrentUnixTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log } from './utils/utils.js';
+import { SettingsManager } from './settings/settings-manager.js';
 
 const DELAY = 500;
 const ERROR_DELAY = 1000;
 let jwt, defaultHeaders, userInfo, sub, apiService;
 let isRunning = false;
 let shadowRoot = null;
+let settingsManager = null;
 
 // const BONUS_XP_CONFIG = {
 //   "enableBonusPoints": true, //3xp
@@ -18,17 +20,17 @@ let shadowRoot = null;
 
 
 const OPTIONS = [
-	{ type: 'separator', label: '═══════ GEM FARMING ═══════', value: '', disabled: true },
+	{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
 	{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
-	{ type: 'separator', label: '═══════ XP SESSION FARMING ═══════', value: '', disabled: true },
+	{ type: 'separator', label: '⟡ XP SESSION FARMING ⟡', value: '', disabled: true },
 	{ type: 'separator', label: '(slow but safe)', value: '', disabled: true },
 	{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
 	{ type: 'xp', label: 'XP 13', value: 'session', amount: 13, config: { enableBonusPoints: true } },
-	{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: {hasBoost: true } },
+	{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: { hasBoost: true } },
 	{ type: 'xp', label: 'XP 26', value: 'session', amount: 26, config: { enableBonusPoints: true, hasBoost: true } },
-	{ type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10} },
-	{ type: 'separator', label: '═══════ XP STORY FARMING ═══════', value: '', disabled: true },
-	{ type: 'separator', label: '(fast, not safe, English only) ', value: '', disabled: true },
+	{ type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10 } },
+	{ type: 'separator', label: '⟡ XP STORY FARMING ⟡', value: '', disabled: true },
+	{ type: 'separator', label: '(fast, unsafe, English only) ', value: '', disabled: true },
 	{ type: 'xp', label: 'XP 50', value: 'story', amount: 0, config: {} },
 	{ type: 'xp', label: 'XP 90 ', value: 'story', amount: 0, config: { hasXpBoost: true } },
 	{ type: 'xp', label: 'XP 100 ', value: 'story', amount: 100, config: { happyHourBonusXp: 50 } },
@@ -36,7 +38,7 @@ const OPTIONS = [
 	{ type: 'xp', label: 'XP 300 ', value: 'story', amount: 300, config: { happyHourBonusXp: 250 } },
 	{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { happyHourBonusXp: 350 } },
 	{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { happyHourBonusXp: 449 } },
-	{ type: 'separator', label: '═══════ STREAK FARMING ═══════', value: '', disabled: true },
+	{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
 	{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
 ];
 
@@ -211,19 +213,14 @@ const toggleInterface = () => {
 	setInterfaceVisible(!isInterfaceVisible());
 };
 
-const addEventSettings = () => {
-	const { settingsBtn, settingsContainer, settingsClose, container } = getElements();
-	const settingsModal = toggleModal(settingsContainer, container);
-
-	settingsBtn.addEventListener('click', settingsModal.show);
-	settingsClose.addEventListener('click', settingsModal.hide);
-};
-
 const addEventListeners = () => {
 	addEventFloatingBtn();
 	addEventStartBtn();
 	addEventStopBtn();
-	addEventSettings();
+
+	const { container } = getElements();
+	settingsManager.addEventSettings(container);
+	settingsManager.addEventListeners();
 };
 
 const populateOptions = () => {
@@ -358,6 +355,48 @@ const farmSelectedOption = async (option) => {
 	}
 };
 
+const loadSavedSettings = (settings) => {
+	const elements = getElements();
+	if (settings.autoOpenUI) {
+		setInterfaceVisible(true);
+	}
+	if (settings.autoStart) {
+		setInterfaceVisible(true);
+		elements.startBtn.click();
+	}
+	if (settings.hideUsername) {
+		elements.username.classList.add('blur');
+	}
+	if (settings.keepScreenOn && 'wakeLock' in navigator) {
+		navigator.wakeLock.request('screen').then(wakeLock => {
+			log('Screen wake lock active');
+		}).catch(err => {
+			logError('Wake lock failed:', err);
+		});
+	}
+	if (settings.delayTime) {
+		//todo
+	}
+	if (settings.retryTime) {
+		//todo
+	}
+	if (settings.autoStopTime) {
+		//todo
+	}
+	if (settings.darkMode) {
+		//todo
+	}
+	if (settings.compactUI) {
+		//todo
+	}
+	if (settings.showProgress) {
+		//todo
+	}
+	if (settings.fontSize) {
+		//todo
+	}
+};
+
 const initVariables = async () => {
 	jwt = getJwtToken();
 	if (!jwt) {
@@ -370,7 +409,16 @@ const initVariables = async () => {
 	userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
 	apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
 	populateOptions();
+
+	settingsManager = new SettingsManager(shadowRoot);
+	const settings = settingsManager.getSettings();
+
+	// Load option lên setting menu và ghi đè defaultOption lên main
+	settingsManager.populateDefaultOptionSelect(OPTIONS);
+	settingsManager.loadDefaultFarmingOption(OPTIONS);
+	settingsManager.loadSettingsToUI();
 };
+
 
 (async () => {
 	try {
@@ -379,6 +427,7 @@ const initVariables = async () => {
 		await initVariables();
 		updateUserInfo();
 		addEventListeners();
+		loadSavedSettings(settingsManager.getSettings());
 	} catch (err) {
 		logError(err, 'init main.js');
 	}
