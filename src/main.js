@@ -1,7 +1,7 @@
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { ApiService } from './service/api.js';
-import { delay, toTimestamp, getCurrentUnixTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log } from './utils/utils.js';
+import { delay, toTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId } from './utils/utils.js';
 import { SettingsManager } from './settings/settings-manager.js';
 
 const DELAY = 500;
@@ -10,37 +10,9 @@ let jwt, defaultHeaders, userInfo, sub, apiService;
 let isRunning = false;
 let shadowRoot = null;
 let settingsManager = null;
-
-// const BONUS_XP_CONFIG = {
-//   "enableBonusPoints": true, //3xp
-//   "hasBoost": true, //x2 xp session
-//   hasXpBoost: true, //x2 xp story
-//   happyHourBonusXp: 449 // +449 xp story
-// }
+let farmOptions = []; // Will be set in initVariables
 
 
-const OPTIONS = [
-	{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
-	{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
-	{ type: 'separator', label: '⟡ XP SESSION FARMING ⟡', value: '', disabled: true },
-	{ type: 'separator', label: '(slow but safe)', value: '', disabled: true },
-	{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
-	{ type: 'xp', label: 'XP 13', value: 'session', amount: 13, config: { enableBonusPoints: true } },
-	{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: { hasBoost: true } },
-	{ type: 'xp', label: 'XP 26', value: 'session', amount: 26, config: { enableBonusPoints: true, hasBoost: true } },
-	{ type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10 } },
-	{ type: 'separator', label: '⟡ XP STORY FARMING ⟡', value: '', disabled: true },
-	{ type: 'separator', label: '(fast, unsafe, English only) ', value: '', disabled: true },
-	{ type: 'xp', label: 'XP 50', value: 'story', amount: 0, config: {} },
-	{ type: 'xp', label: 'XP 90 ', value: 'story', amount: 0, config: { hasXpBoost: true } },
-	{ type: 'xp', label: 'XP 100 ', value: 'story', amount: 100, config: { happyHourBonusXp: 50 } },
-	{ type: 'xp', label: 'XP 200 ', value: 'story', amount: 200, config: { happyHourBonusXp: 150 } },
-	{ type: 'xp', label: 'XP 300 ', value: 'story', amount: 300, config: { happyHourBonusXp: 250 } },
-	{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { happyHourBonusXp: 350 } },
-	{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { happyHourBonusXp: 449 } },
-	{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
-	{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
-];
 
 const getElements = () => {
 	return {
@@ -226,7 +198,7 @@ const addEventListeners = () => {
 const populateOptions = () => {
 	const select = shadowRoot.getElementById('select-option');
 	select.innerHTML = '';
-	OPTIONS.forEach((opt) => {
+	farmOptions.forEach((opt) => {
 		const option = document.createElement('option');
 		option.value = opt.value;
 		option.textContent = opt.label;
@@ -284,7 +256,7 @@ const gemFarmingLoop = async () => {
 			updateFarmResult('gem', gemFarmed);
 			await delay(DELAY);
 		} catch (error) {
-			updateNotify(`Error ${error.status}! Please record screen and report in telegram group!`);
+			updateNotify(`Error ${error.status}! Please report in telegram group!`);
 			await delay(ERROR_DELAY);
 		}
 	}
@@ -300,7 +272,7 @@ const xpFarmingLoop = async (value, amount, config = {}) => {
 				response = await apiService.farmStoryOnce(config);
 			}
 			if (response.status > 400) {
-				updateNotify(`Something went wrong! Pls try other farming methods.\nIf you are using story method, make sure you are on English course (learning language == en)!`);
+				updateNotify(`Something went wrong! Pls try other farming methods.\nIf you are using story method, u should try with English course!`);
 				await delay(ERROR_DELAY);
 				continue;
 			}
@@ -309,7 +281,7 @@ const xpFarmingLoop = async (value, amount, config = {}) => {
 			updateFarmResult('xp', xpFarmed);
 			await delay(DELAY);
 		} catch (error) {
-			updateNotify(`Error ${error.status}! Please record screen and report in telegram group!`);
+			updateNotify(`Error ${error.status}! Please report in telegram group!`);
 			await delay(ERROR_DELAY);
 		}
 	}
@@ -407,6 +379,50 @@ const initVariables = async () => {
 	const decodedJwt = decodeJwtToken(jwt);
 	sub = decodedJwt.sub;
 	userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
+
+	//Lấy skillId cho option 110 xp
+	const skillId = extractSkillId(userInfo.currentCourse || {});
+
+	// Tạo OPTIONS với skillId động
+	farmOptions = [
+		{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
+		{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
+		{ type: 'separator', label: '⟡ XP SESSION FARMING ⟡', value: '', disabled: true },
+		{ type: 'separator', label: '(slow, safe, any language)', value: '', disabled: true },
+		{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
+		// { type: 'xp', label: 'XP 13', value: 'session', amount: 13, config: { updateSessionPayload: { enableBonusPoints: true } } },
+		{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: { updateSessionPayload: { hasBoost: true } } },
+		// { type: 'xp', label: 'XP 26', value: 'session', amount: 26, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true } } },
+		// { type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10 } } },
+		{ type: 'xp', label: 'XP 40', value: 'session', amount: 40, config: { updateSessionPayload: { hasBoost: true, type: 'TARGET_PRACTICE' } } },
+		{ type: 'xp', label: 'XP 50', value: 'session', amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: 'TARGET_PRACTICE' } } },
+		{ type: 'xp', label: 'XP 110', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0, } } }, disabled: !skillId },
+		// {
+		// 	type: 'xp', label: 'TEST', value: 'session', amount: 0, config: {
+		// 		sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] },
+		// 		updateSessionPayload: {
+		// 			hasBoost: true,
+		// 			happyHourBonusXp: 10,
+		// 			pathLevelSpecifics: {
+		// 				unitIndex: 0,
+		// 			}
+		// 		}
+		// 	},
+		// 	disabled: !skillId
+		// },
+		{ type: 'separator', label: '⟡ XP STORY FARMING ⟡', value: '', disabled: true },
+		{ type: 'separator', label: '(fast, unsafe, English only) ', value: '', disabled: true },
+		{ type: 'xp', label: 'XP 50', value: 'story', amount: 50, config: {} },
+		// { type: 'xp', label: 'XP 90 ', value: 'story', amount: 90, config: { storyPayload: { hasXpBoost: true } } },
+		{ type: 'xp', label: 'XP 100 ', value: 'story', amount: 100, config: { storyPayload: { happyHourBonusXp: 50 } } },
+		{ type: 'xp', label: 'XP 200 ', value: 'story', amount: 200, config: { storyPayload: { happyHourBonusXp: 150 } } },
+		{ type: 'xp', label: 'XP 300 ', value: 'story', amount: 300, config: { storyPayload: { happyHourBonusXp: 250 } } },
+		{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { storyPayload: { happyHourBonusXp: 350 } } },
+		{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { storyPayload: { happyHourBonusXp: 449 } } },
+		{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
+		{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
+	];
+
 	apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
 	populateOptions();
 
@@ -414,8 +430,8 @@ const initVariables = async () => {
 	const settings = settingsManager.getSettings();
 
 	// Load option lên setting menu và ghi đè defaultOption lên main
-	settingsManager.populateDefaultOptionSelect(OPTIONS);
-	settingsManager.loadDefaultFarmingOption(OPTIONS);
+	settingsManager.populateDefaultOptionSelect(farmOptions);
+	settingsManager.loadDefaultFarmingOption(farmOptions);
 	settingsManager.loadSettingsToUI();
 };
 

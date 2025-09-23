@@ -9,7 +9,7 @@ export default defineConfig({
     monkey({
       entry: 'src/main.js',
       userscript: {
-        name: 'DuoFarmer',
+        name: 'Duolingo DuoFarmer',
         namespace: 'https://duo-farmer.vercel.app',
         version: version,  // Sử dụng biến thay vì hardcode
         description: 'DuoFarmer is a tool that helps you farm XP, farm Streak, farm Gems or even repair frozen streak on Duolingo!.',

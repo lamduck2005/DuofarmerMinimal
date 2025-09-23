@@ -9,7 +9,7 @@ export class ApiService {
     }
 
     static async getUserInfo(userSub, headers) {
-        const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${userSub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData`;
+        const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${userSub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData,currentCourse`;
         const response = await fetch(userInfoUrl, { method: 'GET', headers });
         return await response.json();
     }
@@ -42,7 +42,7 @@ export class ApiService {
         const startTime = getCurrentUnixTimestamp();
         const fromLanguage = this.userInfo.fromLanguage;
         const completeUrl = `https://stories.duolingo.com/api2/stories/en-${fromLanguage}-the-passport/complete`;
-        const payload = {
+        const storyPayload = {
             awardXp: true,
             isFeaturedStoryInPracticeHub: false,
             completedBonusChallenge: true,
@@ -56,12 +56,12 @@ export class ApiService {
             score: 0,
             startTime: startTime,
             fromLanguage: fromLanguage,
-            learningLanguage: 'en',
+            learningLanguage: this.userInfo.learningLanguage,
             hasXpBoost: false,
             // happyHourBonusXp: 449,
-            ...config,
+            ...(config.storyPayload || {}),
         };
-        return await this.sendRequest({ url: completeUrl, payload, headers: this.defaultHeaders, method: 'POST' });
+        return await this.sendRequest({ url: completeUrl, payload: storyPayload, headers: this.defaultHeaders, method: 'POST' });
     }
 
     async farmSessionOnce(config = {}) {
@@ -86,11 +86,23 @@ export class ApiService {
             learningLanguage: this.userInfo.learningLanguage,
             smartTipsVersion: 2,
             type: 'GLOBAL_PRACTICE',
+            ...(config.sessionPayload || {}),
         };
         const sessionRes = await this.sendRequest({ url: 'https://www.duolingo.com/2017-06-30/sessions', payload: sessionPayload, headers: this.defaultHeaders, method: 'POST' });
         const sessionData = await sessionRes.json();
         const updateSessionPayload = {
             ...sessionData,
+            id: sessionData.id,
+            challenges:[], // empty for fast response
+            adaptiveChallenges: [], // empty for fast response
+            sessionExperimentRecord: [],
+            // metadata: {},
+            experiments_with_treatment_contexts: [],
+            adaptiveInterleavedChallenges: [],
+            adaptiveChallenges: [],
+            sessionStartExperiments: [],
+            trackingProperties: [],
+            ttsAnnotations: [],
             heartsLeft: 0,
             startTime: startTime,
             enableBonusPoints: false,
@@ -98,7 +110,7 @@ export class ApiService {
             failed: false,
             maxInLessonStreak: 9,
             shouldLearnThings: true,
-            ...config,
+            ...(config.updateSessionPayload || {}),
         };
         const updateRes = await this.sendRequest({ url: `https://www.duolingo.com/2017-06-30/sessions/${sessionData.id}`, payload: updateSessionPayload, headers: this.defaultHeaders, method: 'PUT' });
         return updateRes;

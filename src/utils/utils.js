@@ -69,3 +69,21 @@ export const formatHeaders = (jwtToken) => {
     'User-Agent': navigator.userAgent,
   };
 };
+
+
+export const extractSkillId = (currentCourse) => {
+	const sections = currentCourse?.pathSectioned || [];
+	for (const section of sections) {
+		const units = section.units || [];
+		for (const unit of units) {
+			const levels = unit.levels || [];
+			for (const level of levels) {
+				if (level.state === 'active') {
+					const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
+					if (skillId) return skillId;
+				}
+			}
+		}
+	}
+	return null;
+};
