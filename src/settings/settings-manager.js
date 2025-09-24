@@ -1,8 +1,9 @@
-import { logError, log, getJwtToken } from "../utils/utils";
+import { getJwtToken } from "../utils/utils";
 
 export class SettingsManager {
-    constructor(shadowRoot) {
+    constructor(shadowRoot, apiService = null) {
         this.shadowRoot = shadowRoot;
+        this.apiService = apiService;
         this.DEFAULT_SETTINGS = {
             autoOpenUI: false,
             autoStart: false,
@@ -28,7 +29,6 @@ export class SettingsManager {
             }
             return { ...this.DEFAULT_SETTINGS };
         } catch (error) {
-            logError('Settings load error:', error);
             return { ...this.DEFAULT_SETTINGS };
         }
     }
@@ -67,8 +67,8 @@ export class SettingsManager {
             defaultOption: parseInt(elements.defaultOption?.value) || 1, // index in OPTIONS array
             hideUsername: elements.hideUsername?.checked || false,
             keepScreenOn: elements.keepScreenOn?.checked || false,
-            delayTime: parseInt(elements.delayTime?.value) || 500,
-            retryTime: parseInt(elements.retryTime?.value) || 1000,
+            delayTime: Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
+            retryTime: Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
             autoStopTime: parseInt(elements.autoStopTime?.value) || 0,
             darkMode: elements.darkMode?.checked || false,
             compactUI: elements.compactUI?.checked || false,
@@ -99,7 +99,9 @@ export class SettingsManager {
             resetTheme: this.shadowRoot.getElementById('reset-theme'),
             getJwtToken: this.shadowRoot.getElementById('get-jwt-token'),
             resetSetting: this.shadowRoot.getElementById('reset-setting'),
-            settingsContainer: this.shadowRoot.getElementById('settings-container')
+            settingsContainer: this.shadowRoot.getElementById('settings-container'),
+            setAccountPublic: this.shadowRoot.getElementById('set-account-public'),
+            setAccountPrivate: this.shadowRoot.getElementById('set-account-private')
         };
     }
 
@@ -134,6 +136,28 @@ export class SettingsManager {
                 this.settings = { ...this.DEFAULT_SETTINGS };
                 this.loadSettingsToUI();
                 alert('All settings reset successfully! Reload to apply changes.');
+            }
+        });
+
+        elements.setAccountPublic.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to set your account to public?')) {
+                try {
+                    await this.apiService.setPrivacyStatus(false);
+                    alert('Account set to public successfully! Reload the page to see changes.');
+                } catch (error) {
+                    alert('Failed to set account to public: ' + error.message);
+                }
+            }
+        });
+
+        elements.setAccountPrivate.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to set your account to private?')) {
+                try {
+                    await this.apiService.setPrivacyStatus(true);
+                    alert('Account set to private successfully! Reload the page to see changes.');
+                } catch (error) {
+                    alert('Failed to set account to private: ' + error.message);
+                }
             }
         });
     }

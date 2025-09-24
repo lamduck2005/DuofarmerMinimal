@@ -9,7 +9,7 @@ export class ApiService {
     }
 
     static async getUserInfo(userSub, headers) {
-        const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${userSub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData,currentCourse`;
+        const userInfoUrl = `https://www.duolingo.com/2017-06-30/users/${userSub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData,privacySettings,currentCourse{pathSectioned{units{levels{pathLevelMetadata{skillId}}}}}`;
         const response = await fetch(userInfoUrl, { method: 'GET', headers });
         return await response.json();
     }
@@ -27,15 +27,23 @@ export class ApiService {
         }
     }
 
+    async setPrivacyStatus(privacyStatus) {
+        const patchUrl = `https://www.duolingo.com/2017-06-30/users/${this.sub}/privacy-settings?fields=privacySettings`;
+        const patchBody = {
+            "DISABLE_SOCIAL": privacyStatus
+        }
+        return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: 'PATCH' });
+    }
+
     async farmGemOnce() {
         const idReward = 'SKILL_COMPLETION_BALANCED-dd2495f4_d44e_3fc3_8ac8_94e2191506f0-2-GEMS';
         const patchUrl = `https://www.duolingo.com/2017-06-30/users/${this.sub}/rewards/${idReward}`;
-        const patchData = {
+        const patchBody = {
             consumed: true,
             learningLanguage: this.userInfo.learningLanguage,
             fromLanguage: this.userInfo.fromLanguage,
         };
-        return await this.sendRequest({ url: patchUrl, payload: patchData, headers: this.defaultHeaders, method: 'PATCH' });
+        return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: 'PATCH' });
     }
 
     async farmStoryOnce(config = {}) {
@@ -68,35 +76,28 @@ export class ApiService {
         const startTime = config.startTime || getCurrentUnixTimestamp();
         const endTime = config.endTime || startTime + 60;
         const sessionPayload = {
-            challengeTypes: [
-                'assist', 'characterIntro', 'characterMatch', 'characterPuzzle', 'characterSelect', 'characterTrace', 'characterWrite',
-                'completeReverseTranslation', 'definition', 'dialogue', 'extendedMatch', 'extendedListenMatch', 'form', 'freeResponse',
-                'gapFill', 'judge', 'listen', 'listenComplete', 'listenMatch', 'match', 'name', 'listenComprehension', 'listenIsolation',
-                'listenSpeak', 'listenTap', 'orderTapComplete', 'partialListen', 'partialReverseTranslate', 'patternTapComplete',
-                'radioBinary', 'radioImageSelect', 'radioListenMatch', 'radioListenRecognize', 'radioSelect', 'readComprehension',
-                'reverseAssist', 'sameDifferent', 'select', 'selectPronunciation', 'selectTranscription', 'svgPuzzle', 'syllableTap',
-                'syllableListenTap', 'speak', 'tapCloze', 'tapClozeTable', 'tapComplete', 'tapCompleteTable', 'tapDescribe',
-                'translate', 'transliterate', 'transliterationAssist', 'typeCloze', 'typeClozeTable', 'typeComplete', 'typeCompleteTable',
-                'writeComprehension',
-            ],
+            challengeTypes: [],
             fromLanguage: this.userInfo.fromLanguage,
-            isFinalLevel: false,
-            isV2: true,
-            juicy: true,
             learningLanguage: this.userInfo.learningLanguage,
-            smartTipsVersion: 2,
+            // isFinalLevel: false,
+            // isV2: true,
+            // juicy: true,
+            // smartTipsVersion: 2,
             type: 'GLOBAL_PRACTICE',
             ...(config.sessionPayload || {}),
         };
         const sessionRes = await this.sendRequest({ url: 'https://www.duolingo.com/2017-06-30/sessions', payload: sessionPayload, headers: this.defaultHeaders, method: 'POST' });
         const sessionData = await sessionRes.json();
         const updateSessionPayload = {
-            ...sessionData,
+            // ...sessionData,
             id: sessionData.id,
-            challenges:[], // empty for fast response
+            metadata: sessionData.metadata,
+            type: sessionData.type,
+            fromLanguage: this.userInfo.fromLanguage,
+            learningLanguage: this.userInfo.learningLanguage,
+            challenges: [], // empty for fast response
             adaptiveChallenges: [], // empty for fast response
             sessionExperimentRecord: [],
-            // metadata: {},
             experiments_with_treatment_contexts: [],
             adaptiveInterleavedChallenges: [],
             adaptiveChallenges: [],

@@ -4,13 +4,28 @@ import { ApiService } from './service/api.js';
 import { delay, toTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId } from './utils/utils.js';
 import { SettingsManager } from './settings/settings-manager.js';
 
-const DELAY = 500;
-const ERROR_DELAY = 1000;
-let jwt, defaultHeaders, userInfo, sub, apiService;
+let runtimeSettings = {
+	delayTime: 500,
+	retryTime: 1000,
+	autoStopTime: 0
+};
+
+let jwt = null
+let defaultHeaders = null
+let userInfo = null
+let sub = null
+let skillId = null
+
 let isRunning = false;
+
 let shadowRoot = null;
+
+let apiService = null;
 let settingsManager = null;
+
 let farmOptions = []; // Will be set in initVariables
+
+let autoStopTimerId = null;
 
 
 
@@ -32,6 +47,9 @@ const getElements = () => {
 		settingsBtn: shadowRoot.getElementById('settings-btn'),
 		settingsContainer: shadowRoot.getElementById('settings-container'),
 		settingsClose: shadowRoot.getElementById('settings-close'),
+		userInfoDisplay: shadowRoot.getElementById('user-info-display'),
+		setAccountPublic: shadowRoot.getElementById('set-account-public'),
+		setAccountPrivate: shadowRoot.getElementById('set-account-private'),
 	};
 };
 
@@ -50,6 +68,11 @@ const setRunningState = (running) => {
 		startBtn.disabled = true;
 		startBtn.className = 'disable-btn';
 		select.disabled = false;
+		// Xóa timer khi dừng
+		if (autoStopTimerId) {
+			clearTimeout(autoStopTimerId);
+			autoStopTimerId = null;
+		}
 	}
 
 	setTimeout(() => {
@@ -157,6 +180,15 @@ const addEventStartBtn = () => {
 	startBtn.addEventListener('click', async () => {
 		setRunningState(true);
 
+		// Logic auto-stop dựa trên runtimeSettings
+		if (runtimeSettings.autoStopTime > 0) {
+			autoStopTimerId = setTimeout(() => {
+				alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+				updateNotify(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+				setRunningState(false);
+			}, runtimeSettings.autoStopTime * 60 * 1000);
+		}
+
 		const selected = select.options[select.selectedIndex];
 		const optionData = {
 			type: selected.getAttribute('data-type'),
@@ -186,7 +218,6 @@ const toggleInterface = () => {
 };
 
 const addEventListeners = () => {
-	addEventFloatingBtn();
 	addEventStartBtn();
 	addEventStopBtn();
 
@@ -219,16 +250,39 @@ const updateNotify = (message) => {
 
 
 const updateUserInfo = () => {
-	const { username, from, learn, streak, gem, xp } = getElements();
+	const elements = getElements();
 	if (userInfo) {
-		username.innerText = userInfo.username;
-		from.innerText = userInfo.fromLanguage;
-		learn.innerText = userInfo.learningLanguage;
-		streak.innerText = userInfo.streak;
-		gem.innerText = userInfo.gems;
-		xp.innerText = userInfo.totalXp;
+		elements.username.innerText = userInfo.username;
+		elements.from.innerText = userInfo.fromLanguage;
+		elements.learn.innerText = userInfo.learningLanguage;
+		elements.streak.innerText = userInfo.streak;
+		elements.gem.innerText = userInfo.gems;
+		elements.xp.innerText = userInfo.totalXp;
+		
+		// Check privacy settings
+		hideElement(userInfo.privacySettings && (
+			userInfo.privacySettings.includes('DISABLE_FRIENDS_QUESTS') ||
+			userInfo.privacySettings.includes('DISABLE_LEADERBOARDS')
+		) ? elements.setAccountPrivate : elements.setAccountPublic);
+		
+		elements.userInfoDisplay.innerText = JSON.stringify({
+			id: userInfo.id,
+			username: userInfo.username,
+			fromLanguage: userInfo.fromLanguage,
+			learningLanguage: userInfo.learningLanguage,
+			streak: userInfo.streak,
+			gems: userInfo.gems,
+			totalXp: userInfo.totalXp,
+			creationDate: userInfo.creationDate,
+			skillId: skillId,
+			jwt: "hidden - use get jwt button to view",
+			sub: sub,
+			privacySettings: userInfo.privacySettings,
+			streakData: userInfo.streakData
+		}, null, 2);
 	}
 };
+
 
 const updateFarmResult = (type, farmedAmount) => {
 	switch (type) {
@@ -254,10 +308,10 @@ const gemFarmingLoop = async () => {
 		try {
 			await apiService.farmGemOnce(userInfo);
 			updateFarmResult('gem', gemFarmed);
-			await delay(DELAY);
+			await delay(runtimeSettings.delayTime);
 		} catch (error) {
 			updateNotify(`Error ${error.status}! Please report in telegram group!`);
-			await delay(ERROR_DELAY);
+			await delay(runtimeSettings.retryTime);
 		}
 	}
 };
@@ -273,16 +327,16 @@ const xpFarmingLoop = async (value, amount, config = {}) => {
 			}
 			if (response.status > 400) {
 				updateNotify(`Something went wrong! Pls try other farming methods.\nIf you are using story method, u should try with English course!`);
-				await delay(ERROR_DELAY);
+				await delay(runtimeSettings.retryTime);
 				continue;
 			}
 			const responseData = await response.json();
 			const xpFarmed = responseData?.awardedXp || responseData?.xpGain || 0;
 			updateFarmResult('xp', xpFarmed);
-			await delay(DELAY);
+			await delay(runtimeSettings.delayTime);
 		} catch (error) {
 			updateNotify(`Error ${error.status}! Please report in telegram group!`);
-			await delay(ERROR_DELAY);
+			await delay(runtimeSettings.retryTime);
 		}
 	}
 };
@@ -298,15 +352,15 @@ const streakFarmingLoop = async () => {
 			if (sessionRes) {
 				currentTimestamp -= 86400;
 				updateFarmResult('streak', 1);
-				await delay(DELAY);
+				await delay(runtimeSettings.delayTime);
 			} else {
 				updateNotify("Failed to farm streak session, I'm trying again...");
-				await delay(ERROR_DELAY);
+				await delay(runtimeSettings.retryTime);
 				continue;
 			}
 		} catch (error) {
 			updateNotify(`Error in farmStreak: ${error?.message || error}`);
-			await delay(ERROR_DELAY);
+			await delay(runtimeSettings.retryTime);
 			continue;
 		}
 	}
@@ -328,6 +382,8 @@ const farmSelectedOption = async (option) => {
 };
 
 const loadSavedSettings = (settings) => {
+	runtimeSettings = { ...runtimeSettings, ...settings };
+
 	const elements = getElements();
 	if (settings.autoOpenUI) {
 		setInterfaceVisible(true);
@@ -342,18 +398,7 @@ const loadSavedSettings = (settings) => {
 	if (settings.keepScreenOn && 'wakeLock' in navigator) {
 		navigator.wakeLock.request('screen').then(wakeLock => {
 			log('Screen wake lock active');
-		}).catch(err => {
-			logError('Wake lock failed:', err);
-		});
-	}
-	if (settings.delayTime) {
-		//todo
-	}
-	if (settings.retryTime) {
-		//todo
-	}
-	if (settings.autoStopTime) {
-		//todo
+		})
 	}
 	if (settings.darkMode) {
 		//todo
@@ -369,6 +414,7 @@ const loadSavedSettings = (settings) => {
 	}
 };
 
+
 const initVariables = async () => {
 	jwt = getJwtToken();
 	if (!jwt) {
@@ -379,11 +425,12 @@ const initVariables = async () => {
 	const decodedJwt = decodeJwtToken(jwt);
 	sub = decodedJwt.sub;
 	userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
+	
+	apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
+	settingsManager = new SettingsManager(shadowRoot, apiService);
 
-	//Lấy skillId cho option 110 xp
-	const skillId = extractSkillId(userInfo.currentCourse || {});
-
-	// Tạo OPTIONS với skillId động
+	//Lấy skillId cho option 110 xp, sau đó tạo options
+	skillId = extractSkillId(userInfo.currentCourse || {});
 	farmOptions = [
 		{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
 		{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
@@ -396,7 +443,7 @@ const initVariables = async () => {
 		// { type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10 } } },
 		{ type: 'xp', label: 'XP 40', value: 'session', amount: 40, config: { updateSessionPayload: { hasBoost: true, type: 'TARGET_PRACTICE' } } },
 		{ type: 'xp', label: 'XP 50', value: 'session', amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: 'TARGET_PRACTICE' } } },
-		{ type: 'xp', label: 'XP 110', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0, } } }, disabled: !skillId },
+		{ type: 'xp', label: 'XP 110', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
 		// {
 		// 	type: 'xp', label: 'TEST', value: 'session', amount: 0, config: {
 		// 		sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] },
@@ -422,29 +469,29 @@ const initVariables = async () => {
 		{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
 		{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
 	];
+};
 
-	apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
-	populateOptions();
-
-	settingsManager = new SettingsManager(shadowRoot);
-	const settings = settingsManager.getSettings();
-
+const initSettings = () => {
 	// Load option lên setting menu và ghi đè defaultOption lên main
 	settingsManager.populateDefaultOptionSelect(farmOptions);
 	settingsManager.loadDefaultFarmingOption(farmOptions);
 	settingsManager.loadSettingsToUI();
-};
+}
 
 
 (async () => {
 	try {
-		initInterface();
-		setInterfaceVisible(false);
-		await initVariables();
-		updateUserInfo();
-		addEventListeners();
-		loadSavedSettings(settingsManager.getSettings());
+		initInterface(); //khởi tạo giao diện
+		setInterfaceVisible(false); //ẩn giao diện
+		addEventFloatingBtn(); //thêm sự kiện cho floating button
+		await initVariables(); //khởi tạo biến, class
+		populateOptions(); //gắn options lên giao diện
+		initSettings(); //cấu hình setting
+		updateUserInfo(); //cập nhật thông tin user
+		addEventListeners(); // thêm các sự kiện còn lại
+		loadSavedSettings(settingsManager.getSettings()); //tải setting đã lưu
+		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.\nLimited or no use of "Story Farming"!');
 	} catch (err) {
-		logError(err, 'init main.js');
+		logError(err, 'Duofarmer init error!');
 	}
 })();

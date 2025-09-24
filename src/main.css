@@ -438,3 +438,19 @@
 .hidden {
   display: none !important;
 }
+
+.muted {
+  color: #555 !important;
+  font-size: smaller !important;
+}
+
+code {
+  background: #333;
+  margin: 10px 0px;
+  padding: 8px 12px;
+  border-left: #229100 3px solid;
+  font-family: monospace;
+  line-height: 1.5em;
+  display: block;
+  border-radius: 2px;
+}

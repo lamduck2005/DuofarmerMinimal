@@ -78,10 +78,8 @@ export const extractSkillId = (currentCourse) => {
 		for (const unit of units) {
 			const levels = unit.levels || [];
 			for (const level of levels) {
-				if (level.state === 'active') {
-					const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
-					if (skillId) return skillId;
-				}
+				const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
+				if (skillId) return skillId;
 			}
 		}
 	}

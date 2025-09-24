@@ -45,7 +45,8 @@
       <button id="start-btn">Start</button>
       <button id="stop-btn" hidden>Stop</button>
     </div>
-    <div id="notify">High ban risk! Use with caution.<br /></div>
+    <div id="notify">Getting user info, please wait until it's done.<br /> If it takes too long, please refresh the
+      page.</div>
   </div>
   <div id="footer">
     <span class="label">u gay 💔</span>
@@ -83,15 +84,20 @@
           <input type="checkbox" id="keep-screen-on">
         </div>
       </div>
-      <div class="settings-group disabled">
-        <h3>Performance (coming soon)</h3>
+      <div class="settings-group">
+        <h3>Performance</h3>
         <div class="setting-item">
-          <span>Delay time (ms):</span>
-          <input type="number" id="delay-time" min="300" max="10000" value="500">
+          <span>Delay time (100ms - 10000ms):
+            <br>
+            <i class="muted">(Lower delay = faster = high limit rate ban)</i>
+          </span>
+          <input type="number" id="delay-time" min="100" max="10000" value="500">
         </div>
         <div class="setting-item">
-          <span>Retry time (ms):</span>
-          <input type="number" id="retry-time" min="300" max="10000" value="1000">
+          <span>Retry time (100ms - 10000ms):
+            <br>
+          </span>
+          <input type="number" id="retry-time" min="100" max="10000" value="1000">
         </div>
         <div class="setting-item">
           <span>Auto stop after (min) (set 0 for unlimited)</span>
@@ -132,6 +138,14 @@
           <button id="get-jwt-token" class="setting-btn">Get Token</button>
         </div>
         <div class="setting-item">
+          <span>Set account to public</span>
+          <button id="set-account-public" class="setting-btn">Set Public</button>
+        </div>
+        <div class="setting-item">
+          <span>Set account to private</span>
+          <button id="set-account-private" class="setting-btn">Set Private</button>
+        </div>
+        <div class="setting-item">
           <span>Quick logout</span>
           <button id="quick-logout" class="setting-btn">Logout</button>
         </div>
@@ -144,7 +158,7 @@
         <h3>Others</h3>
         <div class="setting-item">
           <span>Blank page (best performance)</span>
-          <a href="https://www.duolingo.com/errors/404.html">Here</a>
+          <a href="https://www.duolingo.com/errors/0">Here</a>
         </div>
         <div class="setting-item">
           <span>Duolingo homepage</span>
@@ -162,6 +176,15 @@
           <span>Duofarmer Homepage</span>
           <a href="https://duo-farmer.vercel.app" target="_blank">Here</a>
         </div>
+        <div class="setting-item">
+          <span>All user info:
+            <br>
+            <code id="user-info-display">
+              Loading...
+            </code>
+          </span>
+        </div>
+
       </div>
     </div>
     <div class="modal-footer">
