@@ -400,18 +400,6 @@ const loadSavedSettings = (settings) => {
 			log('Screen wake lock active');
 		})
 	}
-	if (settings.darkMode) {
-		//todo
-	}
-	if (settings.compactUI) {
-		//todo
-	}
-	if (settings.showProgress) {
-		//todo
-	}
-	if (settings.fontSize) {
-		//todo
-	}
 };
 
 

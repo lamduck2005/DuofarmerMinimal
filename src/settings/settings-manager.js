@@ -12,11 +12,7 @@ export class SettingsManager {
             keepScreenOn: false,
             delayTime: 500,
             retryTime: 1000,
-            autoStopTime: 0,
-            darkMode: false,
-            compactUI: false,
-            showProgress: false,
-            fontSize: 'medium'
+            autoStopTime: 0
         };
         this.settings = this.loadSettings();
     }
@@ -53,10 +49,6 @@ export class SettingsManager {
         if (elements.delayTime) elements.delayTime.value = this.settings.delayTime;
         if (elements.retryTime) elements.retryTime.value = this.settings.retryTime;
         if (elements.autoStopTime) elements.autoStopTime.value = this.settings.autoStopTime;
-        if (elements.darkMode) elements.darkMode.checked = this.settings.darkMode;
-        if (elements.compactUI) elements.compactUI.checked = this.settings.compactUI;
-        if (elements.showProgress) elements.showProgress.checked = this.settings.showProgress;
-        if (elements.fontSize) elements.fontSize.value = this.settings.fontSize;
     }
 
     saveSettingsFromUI() {
@@ -69,11 +61,7 @@ export class SettingsManager {
             keepScreenOn: elements.keepScreenOn?.checked || false,
             delayTime: Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
             retryTime: Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
-            autoStopTime: parseInt(elements.autoStopTime?.value) || 0,
-            darkMode: elements.darkMode?.checked || false,
-            compactUI: elements.compactUI?.checked || false,
-            showProgress: elements.showProgress?.checked || false,
-            fontSize: elements.fontSize?.value || 'medium'
+            autoStopTime: parseInt(elements.autoStopTime?.value) || 0
         };
 
         this.saveSettings(settings);
@@ -90,13 +78,8 @@ export class SettingsManager {
             delayTime: this.shadowRoot.getElementById('delay-time'),
             retryTime: this.shadowRoot.getElementById('retry-time'),
             autoStopTime: this.shadowRoot.getElementById('auto-stop-time'),
-            darkMode: this.shadowRoot.getElementById('dark-mode'),
-            compactUI: this.shadowRoot.getElementById('compact-ui'),
-            showProgress: this.shadowRoot.getElementById('show-progress'),
-            fontSize: this.shadowRoot.getElementById('font-size'),
             saveSettings: this.shadowRoot.getElementById('save-settings'),
             quickLogout: this.shadowRoot.getElementById('quick-logout'),
-            resetTheme: this.shadowRoot.getElementById('reset-theme'),
             getJwtToken: this.shadowRoot.getElementById('get-jwt-token'),
             resetSetting: this.shadowRoot.getElementById('reset-setting'),
             settingsContainer: this.shadowRoot.getElementById('settings-container'),
@@ -117,10 +100,6 @@ export class SettingsManager {
             if (confirm('Are you sure you want to logout?')) {
                window.location.href = 'https://www.duolingo.com/logout';
             }
-        });
-
-        elements.resetTheme.addEventListener('click', () => {
-            //todo
         });
 
         elements.getJwtToken.addEventListener('click', () => {
