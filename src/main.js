@@ -1,7 +1,7 @@
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { ApiService } from './service/api.js';
-import { delay, toTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId } from './utils/utils.js';
+import { delay, toTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId, daysBetween, getCurrentUnixTimestamp } from './utils/utils.js';
 import { SettingsManager } from './settings/settings-manager.js';
 
 let runtimeSettings = {
@@ -341,27 +341,87 @@ const xpFarmingLoop = async (value, amount, config = {}) => {
 	}
 };
 
-const streakFarmingLoop = async () => {
+const streakFarmingLoop = async (value = 'farm') => {
+	const SECONDS_PER_DAY = 86400;
+	const SESSION_DURATION_SECONDS = 60;
+
 	const hasStreak = !!userInfo.streakData.currentStreak;
 	const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
 	const startFarmStreakTimestamp = toTimestamp(startStreakDate);
-	let currentTimestamp = hasStreak ? startFarmStreakTimestamp - 86400 : startFarmStreakTimestamp;
-	while (isRunning) {
-		try {
-			const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + 60 });
-			if (sessionRes) {
-				currentTimestamp -= 86400;
-				updateFarmResult('streak', 1);
-				await delay(runtimeSettings.delayTime);
-			} else {
-				updateNotify("Failed to farm streak session, I'm trying again...");
+	let currentTimestamp = hasStreak ? startFarmStreakTimestamp - SECONDS_PER_DAY : startFarmStreakTimestamp;
+
+	if (value === 'repair') {
+		const creationDate = userInfo.creationDate;
+		const currentStreak = userInfo.streak || 0;
+		const currentTime = getCurrentUnixTimestamp();
+		const daysSinceCreation = daysBetween(creationDate, currentTime);
+		const maxPossibleStreak = daysSinceCreation + 1;
+
+		if (currentStreak >= maxPossibleStreak) {
+			const message = `Current streak (${currentStreak}) is greater than or equal to maximum possible streak (${maxPossibleStreak}). No repair needed.`;
+			updateNotify(message);
+			setRunningState(false);
+			return;
+		}
+
+		const endTimestamp = creationDate;
+		const missingStreaks = maxPossibleStreak - currentStreak;
+
+		if (missingStreaks <= 0) {
+			const message = 'No missing streaks to repair.';
+			updateNotify(message);
+			setRunningState(false);
+			return;
+		}
+
+		updateNotify(`Repairing ${missingStreaks} missing streaks...`);
+
+		let repairTimestamp = currentTimestamp;
+		let repairedCount = 0;
+
+		while (isRunning && repairTimestamp >= endTimestamp && repairedCount < missingStreaks) {
+			try {
+				const sessionRes = await apiService.farmSessionOnce({ startTime: repairTimestamp, endTime: repairTimestamp + SESSION_DURATION_SECONDS });
+				if (sessionRes) {
+					repairTimestamp -= SECONDS_PER_DAY;
+					updateFarmResult('streak', 1);
+					repairedCount += 1;
+					await delay(runtimeSettings.delayTime);
+				} else {
+					updateNotify("Failed to repair streak session, I'm trying again...");
+					await delay(runtimeSettings.retryTime);
+					continue;
+				}
+			} catch (error) {
+				updateNotify(`Error in repairStreak: ${error?.message || error}`);
 				await delay(runtimeSettings.retryTime);
 				continue;
 			}
-		} catch (error) {
-			updateNotify(`Error in farmStreak: ${error?.message || error}`);
-			await delay(runtimeSettings.retryTime);
-			continue;
+		}
+
+		if (repairedCount >= missingStreaks || repairTimestamp < endTimestamp) {
+			const message = `Streak repair completed. Repaired ${repairedCount} day(s).`;
+			updateNotify(message);
+			setRunningState(false);
+		}
+	} else {
+		while (isRunning) {
+			try {
+				const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + SESSION_DURATION_SECONDS });
+				if (sessionRes) {
+					currentTimestamp -= SECONDS_PER_DAY;
+					updateFarmResult('streak', 1);
+					await delay(runtimeSettings.delayTime);
+				} else {
+					updateNotify("Failed to farm streak session, I'm trying again...");
+					await delay(runtimeSettings.retryTime);
+					continue;
+				}
+			} catch (error) {
+				updateNotify(`Error in farmStreak: ${error?.message || error}`);
+				await delay(runtimeSettings.retryTime);
+				continue;
+			}
 		}
 	}
 };
@@ -376,7 +436,7 @@ const farmSelectedOption = async (option) => {
 			xpFarmingLoop(value, amount, config);
 			break;
 		case 'streak':
-			streakFarmingLoop();
+			streakFarmingLoop(value);
 			break;
 	}
 };
@@ -455,7 +515,8 @@ const initVariables = async () => {
 		{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { storyPayload: { happyHourBonusXp: 350 } } },
 		{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { storyPayload: { happyHourBonusXp: 449 } } },
 		{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
-		{ type: 'streak', label: 'Streak farm (test)', value: 'farm' },
+		{ type: 'streak', label: 'Nonstop farm (unlimited)', value: 'farm' },
+		{ type: 'streak', label: 'Repair streak (from account creation)', value: 'repair' },
 	];
 };
 
