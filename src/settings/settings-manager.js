@@ -40,29 +40,40 @@ export class SettingsManager {
 
     loadSettingsToUI() {
         const elements = this.getElements();
+        const mappings = [
+            { key: 'autoOpenUI', element: elements.autoOpenUI, setter: (el, val) => el.checked = val },
+            { key: 'autoStart', element: elements.autoStart, setter: (el, val) => el.checked = val },
+            { key: 'defaultOption', element: elements.defaultOption, setter: (el, val) => el.value = val.toString() },
+            { key: 'hideUsername', element: elements.hideUsername, setter: (el, val) => el.checked = val },
+            { key: 'keepScreenOn', element: elements.keepScreenOn, setter: (el, val) => el.checked = val },
+            { key: 'delayTime', element: elements.delayTime, setter: (el, val) => el.value = val },
+            { key: 'retryTime', element: elements.retryTime, setter: (el, val) => el.value = val },
+            { key: 'autoStopTime', element: elements.autoStopTime, setter: (el, val) => el.value = val },
+        ];
 
-        if (elements.autoOpenUI) elements.autoOpenUI.checked = this.settings.autoOpenUI;
-        if (elements.autoStart) elements.autoStart.checked = this.settings.autoStart;
-        if (elements.defaultOption) elements.defaultOption.value = this.settings.defaultOption.toString();
-        if (elements.hideUsername) elements.hideUsername.checked = this.settings.hideUsername;
-        if (elements.keepScreenOn) elements.keepScreenOn.checked = this.settings.keepScreenOn;
-        if (elements.delayTime) elements.delayTime.value = this.settings.delayTime;
-        if (elements.retryTime) elements.retryTime.value = this.settings.retryTime;
-        if (elements.autoStopTime) elements.autoStopTime.value = this.settings.autoStopTime;
+        mappings.forEach(({ key, element, setter }) => {
+            if (element && this.settings[key] !== undefined) {
+                setter(element, this.settings[key]);
+            }
+        });
     }
 
     saveSettingsFromUI() {
         const elements = this.getElements();
-        const settings = {
-            autoOpenUI: elements.autoOpenUI?.checked || false,
-            autoStart: elements.autoStart?.checked || false,
-            defaultOption: parseInt(elements.defaultOption?.value) || 1, // index in OPTIONS array
-            hideUsername: elements.hideUsername?.checked || false,
-            keepScreenOn: elements.keepScreenOn?.checked || false,
-            delayTime: Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
-            retryTime: Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
-            autoStopTime: parseInt(elements.autoStopTime?.value) || 0
+        const getters = {
+            autoOpenUI: () => elements.autoOpenUI?.checked || false,
+            autoStart: () => elements.autoStart?.checked || false,
+            defaultOption: () => parseInt(elements.defaultOption?.value) || 1,
+            hideUsername: () => elements.hideUsername?.checked || false,
+            keepScreenOn: () => elements.keepScreenOn?.checked || false,
+            delayTime: () => Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
+            retryTime: () => Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
+            autoStopTime: () => parseInt(elements.autoStopTime?.value) || 0
         };
+
+        const settings = Object.fromEntries(
+            Object.entries(getters).map(([key, getter]) => [key, getter()])
+        );
 
         this.saveSettings(settings);
         return settings;
