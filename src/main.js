@@ -2,36 +2,32 @@ import { initPatcher } from './service/patcher.js';
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { ApiService } from './service/api.js';
-import { delay, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId } from './utils/utils.js';
+import { delay, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId, waitForBody } from './utils/utils.js';
 import { SettingsManager } from './settings/settings-manager.js';
 import { FarmingController } from './core/farming.js';
 import { UserManager } from './core/user.js';
 import { generateFarmOptions } from './core/config.js';
 import { UIController, UIState, UIHandlers } from './platform/ui.js';
 
-// Initialize patcher immediately to intercept fetch before Duolingo loads
 initPatcher();
 
-// Helper function to setup callbacks
 function setupCallbacks(userManager, farmingController, uiHandlers, skillId, sub) {
 	userManager.callbacks.onUserInfoUpdate = (userInfo) => {
 		uiHandlers.updateUserInfo(userInfo, skillId, sub);
 	};
-
 	userManager.callbacks.onNotify = (message) => {
 		uiHandlers.updateNotify(message);
 	};
-
 	farmingController.callbacks.onError = (message) => {
 		uiHandlers.updateNotify(message);
 	};
-
 	farmingController.callbacks.onNotify = (message) => {
 		uiHandlers.updateNotify(message);
 	};
 }
 
 (async () => {
+	await waitForBody();
 	try {
 		// Initialize UI
 		const uiController = new UIController(templateRaw, cssText);

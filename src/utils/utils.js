@@ -86,3 +86,19 @@ export const extractSkillId = (currentCourse) => {
 	}
 	return null;
 };
+
+export const waitForBody = () => {
+	return new Promise((resolve) => {
+		if (document.body) {
+			resolve();
+		} else {
+			const observer = new MutationObserver(() => {
+				if (document.body) {
+					observer.disconnect();
+					resolve();
+				}
+			});
+			observer.observe(document.documentElement, { childList: true });
+		}
+	});
+};
