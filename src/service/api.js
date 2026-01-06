@@ -46,32 +46,6 @@ export class ApiService {
         return await this.sendRequest({ url: patchUrl, payload: patchBody, headers: this.defaultHeaders, method: 'PATCH' });
     }
 
-    async farmStoryOnce(config = {}) {
-        const startTime = getCurrentUnixTimestamp();
-        const fromLanguage = this.userInfo.fromLanguage;
-        const completeUrl = `https://stories.duolingo.com/api2/stories/en-${fromLanguage}-the-passport/complete`;
-        const storyPayload = {
-            awardXp: true,
-            isFeaturedStoryInPracticeHub: false,
-            completedBonusChallenge: true,
-            mode: 'READ',
-            isV2Redo: false,
-            isV2Story: false,
-            isLegendaryMode: true,
-            masterVersion: false,
-            maxScore: 0,
-            numHintsUsed: 0,
-            score: 0,
-            startTime: startTime,
-            fromLanguage: fromLanguage,
-            learningLanguage: this.userInfo.learningLanguage,
-            hasXpBoost: false,
-            // happyHourBonusXp: 449,
-            ...(config.storyPayload || {}),
-        };
-        return await this.sendRequest({ url: completeUrl, payload: storyPayload, headers: this.defaultHeaders, method: 'POST' });
-    }
-
     async farmSessionOnce(config = {}) {
         const startTime = config.startTime || getCurrentUnixTimestamp();
         const endTime = config.endTime || startTime + 60;

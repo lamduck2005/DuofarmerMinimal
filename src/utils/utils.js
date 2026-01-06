@@ -65,8 +65,9 @@ export const decodeJwtToken = (token) => {
 export const formatHeaders = (jwtToken) => {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${jwtToken}`,
+    'Authorization': `Bearer ${jwtToken}`,
     'User-Agent': navigator.userAgent,
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
   };
 };
 

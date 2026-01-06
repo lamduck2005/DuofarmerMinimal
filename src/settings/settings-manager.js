@@ -12,7 +12,8 @@ export class SettingsManager {
             keepScreenOn: false,
             delayTime: 500,
             retryTime: 1000,
-            autoStopTime: 0
+            autoStopTime: 0,
+            enableMaxPatch: false
         };
         this.settings = this.loadSettings();
     }
@@ -49,6 +50,7 @@ export class SettingsManager {
             { key: 'delayTime', element: elements.delayTime, setter: (el, val) => el.value = val },
             { key: 'retryTime', element: elements.retryTime, setter: (el, val) => el.value = val },
             { key: 'autoStopTime', element: elements.autoStopTime, setter: (el, val) => el.value = val },
+            { key: 'enableMaxPatch', element: elements.enableMaxPatch, setter: (el, val) => el.checked = val },
         ];
 
         mappings.forEach(({ key, element, setter }) => {
@@ -68,7 +70,8 @@ export class SettingsManager {
             keepScreenOn: () => elements.keepScreenOn?.checked || false,
             delayTime: () => Math.max(100, Math.min(10000, parseInt(elements.delayTime?.value) || 500)),
             retryTime: () => Math.max(100, Math.min(10000, parseInt(elements.retryTime?.value) || 1000)),
-            autoStopTime: () => parseInt(elements.autoStopTime?.value) || 0
+            autoStopTime: () => parseInt(elements.autoStopTime?.value) || 0,
+            enableMaxPatch: () => elements.enableMaxPatch?.checked || false
         };
 
         const settings = Object.fromEntries(
@@ -95,7 +98,8 @@ export class SettingsManager {
             resetSetting: this.shadowRoot.getElementById('reset-setting'),
             settingsContainer: this.shadowRoot.getElementById('settings-container'),
             setAccountPublic: this.shadowRoot.getElementById('set-account-public'),
-            setAccountPrivate: this.shadowRoot.getElementById('set-account-private')
+            setAccountPrivate: this.shadowRoot.getElementById('set-account-private'),
+            enableMaxPatch: this.shadowRoot.getElementById('enable-max-patch')
         };
     }
 

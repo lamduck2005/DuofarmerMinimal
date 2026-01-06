@@ -1,3 +1,4 @@
+import { initPatcher } from './service/patcher.js';
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { ApiService } from './service/api.js';
@@ -8,10 +9,17 @@ import { UserManager } from './core/user.js';
 import { generateFarmOptions } from './core/config.js';
 import { UIController, UIState, UIHandlers } from './platform/ui.js';
 
+// Initialize patcher immediately to intercept fetch before Duolingo loads
+initPatcher();
+
 // Helper function to setup callbacks
 function setupCallbacks(userManager, farmingController, uiHandlers, skillId, sub) {
 	userManager.callbacks.onUserInfoUpdate = (userInfo) => {
 		uiHandlers.updateUserInfo(userInfo, skillId, sub);
+	};
+
+	userManager.callbacks.onNotify = (message) => {
+		uiHandlers.updateNotify(message);
 	};
 
 	farmingController.callbacks.onError = (message) => {
@@ -130,7 +138,7 @@ function setupCallbacks(userManager, farmingController, uiHandlers, skillId, sub
 		// Load saved settings
 		uiHandlers.loadSavedSettings(savedSettings);
 
-		uiHandlers.updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.\nLimited or no use of "Story Farming"!');
+		uiHandlers.updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.\nRecommended to use "Blank page" for best performance (check in setting)');
 	} catch (err) {
 		logError(err, 'Duofarmer init error!');
 	}

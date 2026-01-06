@@ -18,11 +18,6 @@ const FARMING_STRATEGIES = {
 	streak: (apiService, config, callbacks) => new StreakFarming(apiService, config, callbacks)
 };
 
-// XP Farming Methods Map
-const XP_FARMING_METHODS = {
-	session: (apiService, config) => apiService.farmSessionOnce(config),
-	story: (apiService, config) => apiService.farmStoryOnce(config)
-};
 
 export class GemFarming {
 	constructor(apiService, config, callbacks) {
@@ -54,18 +49,12 @@ export class XpFarming {
 	}
 
 	async start(value, amount, config = {}, userInfo) {
-		const farmMethod = XP_FARMING_METHODS[value];
-		if (!farmMethod) {
-			safeCall(this.callbacks.onError, `Unknown XP farming method: ${value}`);
-			return;
-		}
-
 		while (this.config.isRunning) {
 			try {
-				const response = await farmMethod(this.apiService, config);
+				const response = await this.apiService.farmSessionOnce(config);
 				
 				if (response.status > 400) {
-					safeCall(this.callbacks.onError, `Something went wrong! Pls try other farming methods.\nIf you are using story method, u should try with English course!`);
+					safeCall(this.callbacks.onError, `Something went wrong! Please try again later.`);
 					await this.callbacks.delay(this.config.retryTime);
 					continue;
 				}
@@ -166,7 +155,15 @@ export class StreakFarming {
 			return;
 		}
 
-		const { missingStreaks, endTimestamp } = validation;
+		const { missingStreaks, maxPossibleStreak, endTimestamp } = validation;
+
+		if(!confirm(`This feature will repair ${missingStreaks} missing streaks, so your streak will be ${maxPossibleStreak} days. Are you sure you want to continue?`)) {
+			const message = `Streak repair cancelled.`;
+			safeCall(this.callbacks.onNotify, message);
+			safeCall(this.callbacks.onStop);
+			return;
+		}
+
 		safeCall(this.callbacks.onNotify, `Repairing ${missingStreaks} missing streaks...`);
 
 		const hasStreak = !!userInfo.streakData.currentStreak;

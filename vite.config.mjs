@@ -52,6 +52,7 @@ export default defineConfig({
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=duolingo.com',
         grant: ['GM_log'],
         license: 'CC BY-NC-SA 4.0',
+        'run-at': 'document-start',
       },
       build: {
         fileName: 'duofarmer.user.js',
