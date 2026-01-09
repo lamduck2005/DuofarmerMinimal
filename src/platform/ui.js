@@ -1,6 +1,22 @@
-import { log } from '../utils/utils.js';
+let logContainer = null;
+const MAX_LOGS = 500;
 
-// Helper functions
+export function initLog(shadowRoot) {
+	logContainer = shadowRoot.getElementById('log-container');
+}
+
+export function log(message) {
+	if (!logContainer) return;
+	const line = document.createElement('div');
+	const time = new Date().toLocaleTimeString();
+	line.textContent = `[${time}] ${message}`;
+	logContainer.appendChild(line);
+	if (logContainer.children.length > MAX_LOGS) {
+		logContainer.removeChild(logContainer.firstChild);
+	}
+	logContainer.scrollTop = logContainer.scrollHeight;
+}
+
 export function getElements(shadowRoot) {
 	return {
 		startBtn: shadowRoot.getElementById('start-btn'),
@@ -9,7 +25,7 @@ export function getElements(shadowRoot) {
 		floatingBtn: shadowRoot.getElementById('floating-btn'),
 		container: shadowRoot.getElementById('container'),
 		overlay: shadowRoot.getElementById('overlay'),
-		notify: shadowRoot.getElementById('notify'),
+		logContainer: shadowRoot.getElementById('log-container'),
 		username: shadowRoot.getElementById('username'),
 		from: shadowRoot.getElementById('from'),
 		learn: shadowRoot.getElementById('learn'),
@@ -74,10 +90,11 @@ export class UIController {
 			settingsContainer.style.display = 'none';
 		}
 
-		// Validate required elements exist
+		initLog(this.shadowRoot);
+
 		const requiredElements = [
 			'start-btn', 'stop-btn', 'select-option', 'floating-btn',
-			'container', 'overlay', 'notify'
+			'container', 'overlay', 'log-container'
 		];
 
 		for (const id of requiredElements) {
@@ -246,10 +263,7 @@ export class UIHandlers {
 	}
 
 	updateNotify(message) {
-		const elements = getElements(this.shadowRoot);
-		const now = new Date().toLocaleTimeString();
-		elements.notify.innerText = `[${now}] ` + message;
-		log(`[${now}] ${message}`);
+		log(message);
 	}
 
 	updateUserInfo(userInfo, skillId, sub) {
@@ -315,7 +329,7 @@ export class UIHandlers {
 			elements.username.classList.add('blur');
 		}
 		if (settings.keepScreenOn && 'wakeLock' in navigator) {
-			navigator.wakeLock.request('screen').then(wakeLock => {
+			navigator.wakeLock.request('screen').then(() => {
 				log('Screen wake lock active');
 			});
 		}

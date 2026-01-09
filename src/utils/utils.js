@@ -1,19 +1,3 @@
-export const log = (message) => {
-  // Fallback cho môi trường dev
-  if (typeof GM_log !== 'undefined') {
-    GM_log(message);
-  } else {
-    console.log('[DuoFarmer]', message);
-  }
-};
-
-// Simple error logging
-export const logError = (error, context = "") => {
-  const message = error?.message || error?.toString() || "Unknown error";
-  const fullMessage = context ? `[${context}] ${message}` : message;
-  log(fullMessage);
-};
-
 // Delay function
 export const delay = (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms));

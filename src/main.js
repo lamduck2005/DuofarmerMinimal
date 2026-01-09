@@ -2,12 +2,12 @@ import { initPatcher } from './service/patcher.js';
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { ApiService } from './service/api.js';
-import { delay, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId, waitForBody } from './utils/utils.js';
+import { delay, getJwtToken, decodeJwtToken, formatHeaders, extractSkillId, waitForBody } from './utils/utils.js';
 import { SettingsManager } from './settings/settings-manager.js';
 import { FarmingController } from './core/farming.js';
 import { UserManager } from './core/user.js';
 import { generateFarmOptions } from './core/config.js';
-import { UIController, UIState, UIHandlers } from './platform/ui.js';
+import { UIController, UIState, UIHandlers, log } from './platform/ui.js';
 
 initPatcher();
 
@@ -134,8 +134,11 @@ function setupCallbacks(userManager, farmingController, uiHandlers, skillId, sub
 		// Load saved settings
 		uiHandlers.loadSavedSettings(savedSettings);
 
-		uiHandlers.updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.\nRecommended to use "Blank page" for best performance (check in setting)');
+		uiHandlers.updateNotify("Duofarmer ready! If you get bugs or wanna request new features, tell me in telegram group!");
+		uiHandlers.updateNotify("Don't abuse hacking to avoid account ban.");
+		uiHandlers.updateNotify('Recommended to use "Blank page" for best performance (check in settings)');
+		uiHandlers.updateNotify('Recommended to set account private (check in settings)');
 	} catch (err) {
-		logError(err, 'Duofarmer init error!');
+		log(`Duofarmer init error: ${err?.message || err}`);
 	}
 })();

@@ -1,4 +1,5 @@
 import { toTimestamp, getCurrentUnixTimestamp, daysBetween } from '../utils/utils.js';
+import { log } from '../platform/ui.js';
 
 // Helper functions
 const safeCall = (callback, ...args) => callback?.(...args);
@@ -120,9 +121,34 @@ export class StreakFarming {
 		const creationDate = userInfo.creationDate;
 		const currentStreak = userInfo.streak || 0;
 		const currentTime = getCurrentUnixTimestamp();
-		const daysSinceCreation = daysBetween(creationDate, currentTime);
-		const maxPossibleStreak = daysSinceCreation + 1;
+		
+		const hasStreak = !!userInfo.streakData?.currentStreak?.startDate;
+		const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : null;
+		const startStreakTimestamp = startStreakDate ? toTimestamp(startStreakDate) : null;
+		
+		let baseTimestamp;
+		let baseSource;
+		if (startStreakTimestamp && startStreakTimestamp < creationDate) {
+			baseTimestamp = startStreakTimestamp;
+			baseSource = 'startStreakDate';
+		} else {
+			baseTimestamp = creationDate;
+			baseSource = 'creationDate';
+		}
+		
+		const daysSinceBase = daysBetween(baseTimestamp, currentTime);
+		const maxPossibleStreak = daysSinceBase + 1;
 		const missingStreaks = maxPossibleStreak - currentStreak;
+
+		log(`[RepairStreak] validateRepair - creationDate: ${creationDate}`);
+		log(`[RepairStreak] validateRepair - startStreakDate: ${startStreakDate}`);
+		log(`[RepairStreak] validateRepair - startStreakTimestamp: ${startStreakTimestamp}`);
+		log(`[RepairStreak] validateRepair - baseTimestamp: ${baseTimestamp} (source: ${baseSource})`);
+		log(`[RepairStreak] validateRepair - currentStreak: ${currentStreak}`);
+		log(`[RepairStreak] validateRepair - currentTime: ${currentTime}`);
+		log(`[RepairStreak] validateRepair - daysSinceBase: ${daysSinceBase}`);
+		log(`[RepairStreak] validateRepair - maxPossibleStreak: ${maxPossibleStreak}`);
+		log(`[RepairStreak] validateRepair - missingStreaks: ${missingStreaks}`);
 
 		if (currentStreak >= maxPossibleStreak) {
 			return {
@@ -141,7 +167,7 @@ export class StreakFarming {
 		return {
 			valid: true,
 			missingStreaks,
-			endTimestamp: creationDate,
+			endTimestamp: baseTimestamp,
 			maxPossibleStreak
 		};
 	}
@@ -155,24 +181,54 @@ export class StreakFarming {
 			return;
 		}
 
-		const { missingStreaks, maxPossibleStreak, endTimestamp } = validation;
+		const { endTimestamp } = validation;
+		const currentStreak = userInfo.streak || 0;
+		const currentTime = getCurrentUnixTimestamp();
 
-		if(!confirm(`This feature will repair ${missingStreaks} missing streaks, so your streak will be ${maxPossibleStreak} days. Are you sure you want to continue?`)) {
+		const hasStreak = !!userInfo.streakData.currentStreak;
+		const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : null;
+		const startFarmStreakTimestamp = startStreakDate ? toTimestamp(startStreakDate) : null;
+		
+		let actualMaxPossibleStreak;
+		let actualEndTimestamp;
+		
+		if (startFarmStreakTimestamp) {
+			actualMaxPossibleStreak = daysBetween(startFarmStreakTimestamp, currentTime) + 1;
+			actualEndTimestamp = startFarmStreakTimestamp;
+			log(`[RepairStreak] repair - using startStreakDate for maxPossibleStreak`);
+		} else {
+			actualMaxPossibleStreak = validation.maxPossibleStreak;
+			actualEndTimestamp = endTimestamp;
+			log(`[RepairStreak] repair - using creationDate for maxPossibleStreak`);
+		}
+		
+		const actualMissingStreaks = actualMaxPossibleStreak - currentStreak;
+
+		if(!confirm(`This feature will run ${actualMaxPossibleStreak} sessions to repair ${actualMissingStreaks} missing streaks. Your streak will be ${actualMaxPossibleStreak} days. Are you sure you want to continue?`)) {
 			const message = `Streak repair cancelled.`;
 			safeCall(this.callbacks.onNotify, message);
 			safeCall(this.callbacks.onStop);
 			return;
 		}
 
-		safeCall(this.callbacks.onNotify, `Repairing ${missingStreaks} missing streaks...`);
+		safeCall(this.callbacks.onNotify, `Starting repair: ${actualMaxPossibleStreak} sessions to run...`);
 
-		const hasStreak = !!userInfo.streakData.currentStreak;
-		const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
-		const startFarmStreakTimestamp = toTimestamp(startStreakDate);
-		let repairTimestamp = hasStreak ? startFarmStreakTimestamp - this.SECONDS_PER_DAY : startFarmStreakTimestamp;
+		let repairTimestamp = currentTime - this.SECONDS_PER_DAY;
 		let repairedCount = 0;
 
-		while (this.config.isRunning && repairTimestamp >= endTimestamp && repairedCount < missingStreaks) {
+		log(`[RepairStreak] repair - hasStreak: ${hasStreak}`);
+		log(`[RepairStreak] repair - startStreakDate: ${startStreakDate} (type: ${typeof startStreakDate})`);
+		log(`[RepairStreak] repair - startFarmStreakTimestamp: ${startFarmStreakTimestamp}`);
+		log(`[RepairStreak] repair - currentStreak: ${currentStreak}`);
+		log(`[RepairStreak] repair - actualMaxPossibleStreak: ${actualMaxPossibleStreak}`);
+		log(`[RepairStreak] repair - actualMissingStreaks: ${actualMissingStreaks}`);
+		log(`[RepairStreak] repair - repairTimestamp (start): ${repairTimestamp}`);
+		log(`[RepairStreak] repair - actualEndTimestamp: ${actualEndTimestamp}`);
+		log(`[RepairStreak] repair - isRunning: ${this.config.isRunning}`);
+		log(`[RepairStreak] repair - condition check: repairTimestamp >= actualEndTimestamp = ${repairTimestamp >= actualEndTimestamp}`);
+		log(`[RepairStreak] repair - condition check: repairedCount < actualMaxPossibleStreak = ${repairedCount < actualMaxPossibleStreak}`);
+
+		while (this.config.isRunning && repairTimestamp >= actualEndTimestamp && repairedCount < actualMaxPossibleStreak) {
 			try {
 				const sessionRes = await this.apiService.farmSessionOnce({
 					startTime: repairTimestamp,
@@ -181,8 +237,8 @@ export class StreakFarming {
 				
 				if (sessionRes) {
 					repairTimestamp -= this.SECONDS_PER_DAY;
-					safeCall(this.callbacks.onUpdate, 'streak', 1);
 					repairedCount += 1;
+					safeCall(this.callbacks.onNotify, `Repairing ${repairedCount} / ${actualMaxPossibleStreak} streaks...`);
 					await this.callbacks.delay(this.config.delayTime);
 				} else {
 					safeCall(this.callbacks.onError, "Failed to repair streak session, I'm trying again...");
@@ -196,8 +252,17 @@ export class StreakFarming {
 			}
 		}
 
-		if (repairedCount >= missingStreaks || repairTimestamp < endTimestamp) {
-			const message = `Streak repair completed. Repaired ${repairedCount} day(s).`;
+		log(`[RepairStreak] repair - loop ended`);
+		log(`[RepairStreak] repair - final repairTimestamp: ${repairTimestamp}`);
+		log(`[RepairStreak] repair - final repairedCount: ${repairedCount}`);
+		log(`[RepairStreak] repair - isRunning after loop: ${this.config.isRunning}`);
+
+		if (repairedCount > 0) {
+			safeCall(this.callbacks.onUpdate, 'streak', actualMissingStreaks);
+		}
+		
+		if (repairedCount >= actualMaxPossibleStreak || repairTimestamp < actualEndTimestamp) {
+			const message = `Streak repair completed. Repaired ${repairedCount} day(s). Your streak is now ${actualMaxPossibleStreak}.`;
 			safeCall(this.callbacks.onNotify, message);
 			safeCall(this.callbacks.onStop);
 		}

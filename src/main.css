@@ -130,17 +130,26 @@
   vertical-align: middle;
 }
 
-#notify {
+#log-container {
   width: 90%;
   max-width: 90%;
-  min-height: 10vh;
+  height: 300px;
   margin: 8px 0;
   padding: 8px 12px;
   border-radius: 6px;
-  background: #333;
+  background: #1a1a1a;
   color: #c8ff00;
-  font-size: 1em;
+  /* font-size: 0.85em; */
+  font-family: monospace;
+  overflow-y: auto;
+  overflow-x: hidden;
   word-wrap: break-word;
+  user-select: text;
+}
+
+#log-container div {
+  padding: 2px 0;
+  border-bottom: 1px solid #333;
 }
 
 #overlay {
