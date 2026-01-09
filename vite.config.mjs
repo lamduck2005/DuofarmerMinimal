@@ -50,9 +50,13 @@ export default defineConfig({
         author: 'Lamduck',
         match: ['https://*.duolingo.com/*'],
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=duolingo.com',
-        grant: [],
-        antifeature: 'ads',
         license: 'CC BY-NC-SA 4.0',
+        antifeature: [
+          {
+            type: 'ads',
+            description: 'This script have some promote link to my other website like telegram chat, homepage,...'
+          }
+        ],
         'run-at': 'document-start',
       },
       build: {
