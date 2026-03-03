@@ -60,13 +60,13 @@ const setRunningState = (running) => {
 		startBtn.hidden = true;
 		stopBtn.hidden = false;
 		stopBtn.disabled = true;
-		stopBtn.className = 'disable-btn';
+		stopBtn.classList.add('disable-btn');
 		select.disabled = true;
 	} else {
 		stopBtn.hidden = true;
 		startBtn.hidden = false;
 		startBtn.disabled = true;
-		startBtn.className = 'disable-btn';
+		startBtn.classList.add('disable-btn');
 		select.disabled = false;
 		// Xóa timer khi dừng
 		if (autoStopTimerId) {
@@ -77,9 +77,9 @@ const setRunningState = (running) => {
 
 	setTimeout(() => {
 		const { startBtn: btn, stopBtn: stop } = getElements();
-		btn.className = '';
+		btn.classList.remove('disable-btn');
 		btn.disabled = false;
-		stop.className = '';
+		stop.classList.remove('disable-btn');
 		stop.disabled = false;
 	}, 3000);
 };
@@ -87,7 +87,7 @@ const setRunningState = (running) => {
 const disableAllControls = (notifyMessage = null) => {
 	const { startBtn, stopBtn, select } = getElements();
 	startBtn.disabled = true;
-	startBtn.className = 'disable-btn';
+	startBtn.classList.add('disable-btn');
 	stopBtn.disabled = true;
 	select.disabled = true;
 	if (notifyMessage) {
@@ -189,13 +189,15 @@ const addEventStartBtn = () => {
 			}, runtimeSettings.autoStopTime * 60 * 1000);
 		}
 
-		const selected = select.options[select.selectedIndex];
+		const idx = Number(select.value);
+		const opt = farmOptions[idx];
+		if (!opt) return;
 		const optionData = {
-			type: selected.getAttribute('data-type'),
-			amount: Number(selected.getAttribute('data-amount')),
-			value: selected.value,
-			label: selected.textContent,
-			config: selected.getAttribute('data-config') ? JSON.parse(selected.getAttribute('data-config')) : {},
+			type: opt.type,
+			amount: opt.amount != null ? Number(opt.amount) : 0,
+			value: opt.value || '',
+			label: opt.label,
+			config: opt.config || {},
 		};
 		await farmSelectedOption(optionData);
 	});
@@ -229,16 +231,21 @@ const addEventListeners = () => {
 const populateOptions = () => {
 	const select = shadowRoot.getElementById('select-option');
 	select.innerHTML = '';
-	farmOptions.forEach((opt) => {
+	const typeColors = { gem: '#c084fc', xp: '#38bdf8', streak: '#fb923c', separator: '#6b7280' };
+
+	farmOptions.forEach((opt, idx) => {
 		const option = document.createElement('option');
-		option.value = opt.value;
+		option.value = String(idx);
 		option.textContent = opt.label;
-		option.setAttribute('data-type', opt.type);
-		if (opt.amount != null) option.setAttribute('data-amount', String(opt.amount));
-		if (opt.config) option.setAttribute('data-config', JSON.stringify(opt.config));
-		if (opt.disabled) option.disabled = true;
+		option.disabled = opt.type === 'separator' || !!opt.disabled;
+		option.style.color = typeColors[opt.type] || '#e8f0f8';
+		option.style.fontWeight = opt.type === 'separator' ? '400' : '700';
 		select.appendChild(option);
 	});
+
+	// chọn item đầu tiên không bị disabled
+	const firstValid = Array.from(select.options).findIndex(o => !o.disabled);
+	if (firstValid >= 0) select.selectedIndex = firstValid;
 };
 
 const updateNotify = (message) => {
@@ -255,9 +262,9 @@ const updateUserInfo = () => {
 		elements.username.innerText = userInfo.username;
 		elements.from.innerText = userInfo.fromLanguage;
 		elements.learn.innerText = userInfo.learningLanguage;
-		elements.streak.innerText = userInfo.streak;
-		elements.gem.innerText = userInfo.gems;
-		elements.xp.innerText = userInfo.totalXp;
+		elements.streak.innerHTML = '🔥 ' + Number(userInfo.streak).toLocaleString();
+		elements.gem.innerHTML = '💎 ' + Number(userInfo.gems).toLocaleString();
+		elements.xp.innerHTML = '⚡ ' + Number(userInfo.totalXp).toLocaleString();
 		
 		// Check privacy settings
 		hideElement(userInfo.privacySettings && (

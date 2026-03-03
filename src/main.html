@@ -1,13 +1,27 @@
 <div id="overlay"></div>
+
 <div id="container">
+
+  <!-- ── Header ── -->
   <div id="header">
     <div id="header-left">
-      <img src="https://img.icons8.com/?size=48&id=mPfeGOwngGmN&format=png&color=000000">
+      <img src="https://img.icons8.com/?size=48&id=mPfeGOwngGmN&format=png&color=000000" alt="logo"/>
       <span class="label">Duofarmer</span>
     </div>
-    <button id="settings-btn">⚙️</button>
+    <div id="header-right">
+      <button id="lang-btn" title="Change Language">
+        <svg class="lang-flag" viewBox="0 0 32 24" xmlns="http://www.w3.org/2000/svg">
+          <rect fill="#DA251D" height="24" width="32"/>
+          <path d="M16 4.5L18.5 10.5H25L19.5 14L21.5 20L16 16.5L10.5 20L12.5 14L7 10.5H13.5L16 4.5Z" fill="#FFFF00"/>
+        </svg>
+      </button>
+      <button id="settings-btn">⚙️</button>
+    </div>
   </div>
+
+  <!-- ── Body ── -->
   <div id="body">
+
     <table id="table-main" class="table">
       <thead>
         <tr>
@@ -24,6 +38,7 @@
         </tr>
       </tbody>
     </table>
+
     <table id="table-progress" class="table">
       <thead>
         <tr>
@@ -40,21 +55,44 @@
         </tr>
       </tbody>
     </table>
+
     <div id="action-row">
-      <select id="select-option">
-        <!-- <option value="option1">Option 1</option> -->
-        <!-- <option value="option2">Option 2</option> -->
-      </select>
-      <button id="start-btn">Start</button>
-      <button id="stop-btn" hidden>Stop</button>
+      <div class="select-wrapper">
+        <select id="select-option">
+          <!-- options injected by JS -->
+        </select>
+
+      </div>
+      <button id="start-btn" class="save-btn">▶ Start</button>
+      <button id="stop-btn" hidden>■ Stop</button>
     </div>
-    <div id="notify">Getting user info, please wait until it's done.<br /> If it takes too long, please refresh the
-      page.</div>
-  </div>
+
+    <div id="terminal-section">
+      <div id="terminal-wrapper">
+        <input checked class="terminal-toggle" id="terminal-toggle" type="checkbox"/>
+        <label class="terminal-toggle-label" for="terminal-toggle" title="Toggle Terminal">▾</label>
+        <div id="terminal-box">
+          <div id="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot dot--red"></span>
+              <span class="dot dot--yellow"></span>
+              <span class="dot dot--green"></span>
+            </div>
+          </div>
+          <div id="notify">Getting user info, please wait until it's done.<br/> If it takes too long, please refresh the page.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#body -->
+
+  <!-- ── Footer ── -->
   <div id="footer">
     <span class="label">If info is wrong, reload the page!</span>
   </div>
-</div>
+
+</div><!-- /#container -->
+
 <div id="settings-container">
   <div id="settings-menu" class="modal-content">
     <div class="modal-header">
@@ -90,16 +128,13 @@
       <div class="settings-group">
         <h3>Performance</h3>
         <div class="setting-item">
-          <span>Delay time (100ms - 10000ms):
-            <br>
+          <span>Delay time (100ms - 10000ms):<br>
             <i class="muted">(Lower delay = faster = high limit rate ban)</i>
           </span>
           <input type="number" id="delay-time" min="100" max="10000" value="500">
         </div>
         <div class="setting-item">
-          <span>Retry time (100ms - 10000ms):
-            <br>
-          </span>
+          <span>Retry time (100ms - 10000ms):<br></span>
           <input type="number" id="retry-time" min="100" max="10000" value="1000">
         </div>
         <div class="setting-item">
@@ -157,7 +192,6 @@
           <a href="https://greasyfork.org/en/scripts?set=593926" target="_blank">Here</a>
         </div>
       </div>
-
       <div class="settings-group">
         <h3>Donate me (please 😭)</h3>
         <div class="setting-item">
@@ -169,16 +203,12 @@
           <a>Pls text me in telegram 😘</a>
         </div>
       </div>
-
       <div class="settings-group">
         <h3>All userinfo (json)</h3>
         <div class="setting-item">
-          <code id="user-info-display">
-              Loading...
-            </code>
+          <code id="user-info-display">Loading...</code>
         </div>
       </div>
-
     </div>
     <div class="modal-footer">
       <span></span>
@@ -186,4 +216,5 @@
     </div>
   </div>
 </div>
+
 <div id="floating-btn">🐸</div>
