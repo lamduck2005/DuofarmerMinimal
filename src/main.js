@@ -544,18 +544,17 @@ const initVariables = async () => {
 
 	skillId = extractSkillId(userInfo.currentCourse || {});
 	farmOptions = [
-		{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
-		{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
-		{ type: 'separator', label: '⟡ XP SESSION FARMING ⟡', value: '', disabled: true },
-		{ type: 'separator', label: '(slow, safe, any language)', value: '', disabled: true },
+		{ type: 'separator', label: '── GEM ──', value: '', disabled: true },
+		{ type: 'gem', label: 'Gem x30', value: 'fixed', amount: 30 },
+		{ type: 'separator', label: '── XP ──', value: '', disabled: true },
 		{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
 		{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: { updateSessionPayload: { hasBoost: true } } },
 		{ type: 'xp', label: 'XP 40', value: 'session', amount: 40, config: { updateSessionPayload: { hasBoost: true, type: 'TARGET_PRACTICE' } } },
 		{ type: 'xp', label: 'XP 50', value: 'session', amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: 'TARGET_PRACTICE' } } },
-		{ type: 'xp', label: 'XP 110', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
-		{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
-		{ type: 'streak', label: 'Nonstop farm (unlimited)', value: 'farm' },
-		{ type: 'streak', label: 'Repair streak (from account creation)', value: 'repair' },
+		{ type: 'xp', label: 'XP 110 (Unit Test)', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
+		{ type: 'separator', label: '── STREAK ──', value: '', disabled: true },
+		{ type: 'streak', label: 'Farm (unlimited)', value: 'farm' },
+		{ type: 'streak', label: 'Repair streak', value: 'repair' },
 	];
 };
 
