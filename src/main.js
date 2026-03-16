@@ -1,8 +1,8 @@
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
-import { ApiService } from './service/api.js';
-import { delay, toTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId, daysBetween, getCurrentUnixTimestamp } from './utils/utils.js';
-import { SettingsManager } from './settings/settings-manager.js';
+import { getUserInfo, createApi } from './api.js';
+import { delay, toTimestamp, getJwtToken, decodeJwtToken, logError, log, daysBetween, getCurrentUnixTimestamp } from './utils.js';
+import { loadSettings, saveSettings, DEFAULT_SETTINGS } from './settings.js';
 
 let runtimeSettings = {
 	delayTime: 500,
@@ -10,24 +10,42 @@ let runtimeSettings = {
 	autoStopTime: 0
 };
 
-let jwt = null
-let defaultHeaders = null
-let userInfo = null
-let sub = null
-let skillId = null
+let jwt = null;
+let userInfo = null;
+let sub = null;
+let skillId = null;
 
 let isRunning = false;
 
 let shadowRoot = null;
 
 let apiService = null;
-let settingsManager = null;
+let settings = null;
 
-let farmOptions = []; // Will be set in initVariables
+let farmOptions = [];
 
 let autoStopTimerId = null;
 
+const formatHeaders = (jwtToken) => ({
+	'Content-Type': 'application/json',
+	Authorization: `Bearer ${jwtToken}`,
+	'User-Agent': navigator.userAgent,
+});
 
+const extractSkillId = (currentCourse) => {
+	const sections = currentCourse?.pathSectioned || [];
+	for (const section of sections) {
+		const units = section.units || [];
+		for (const unit of units) {
+			const levels = unit.levels || [];
+			for (const level of levels) {
+				const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
+				if (skillId) return skillId;
+			}
+		}
+	}
+	return null;
+};
 
 const getElements = () => {
 	return {
@@ -47,10 +65,94 @@ const getElements = () => {
 		settingsBtn: shadowRoot.getElementById('settings-btn'),
 		settingsContainer: shadowRoot.getElementById('settings-container'),
 		settingsClose: shadowRoot.getElementById('settings-close'),
-		userInfoDisplay: shadowRoot.getElementById('user-info-display'),
-		setAccountPublic: shadowRoot.getElementById('set-account-public'),
-		setAccountPrivate: shadowRoot.getElementById('set-account-private'),
 	};
+};
+
+const getSettingsElements = () => ({
+	autoOpenUI: shadowRoot.getElementById('auto-open-ui'),
+	autoStart: shadowRoot.getElementById('auto-start'),
+	defaultOption: shadowRoot.getElementById('default-option'),
+	hideUsername: shadowRoot.getElementById('hide-username'),
+	keepScreenOn: shadowRoot.getElementById('keep-screen-on'),
+	autoStopTime: shadowRoot.getElementById('auto-stop-time'),
+	saveSettingsBtn: shadowRoot.getElementById('save-settings'),
+	getJwtTokenBtn: shadowRoot.getElementById('get-jwt-token'),
+	resetSetting: shadowRoot.getElementById('reset-setting'),
+});
+
+const loadSettingsToUI = () => {
+	const el = getSettingsElements();
+	if (el.autoOpenUI) el.autoOpenUI.checked = settings.autoOpenUI;
+	if (el.autoStart) el.autoStart.checked = settings.autoStart;
+	if (el.defaultOption) el.defaultOption.value = settings.defaultOption.toString();
+	if (el.hideUsername) el.hideUsername.checked = settings.hideUsername;
+	if (el.keepScreenOn) el.keepScreenOn.checked = settings.keepScreenOn;
+	if (el.autoStopTime) el.autoStopTime.value = settings.autoStopTime;
+};
+
+const saveSettingsFromUI = () => {
+	const el = getSettingsElements();
+	const newSettings = {
+		autoOpenUI: el.autoOpenUI?.checked || false,
+		autoStart: el.autoStart?.checked || false,
+		defaultOption: parseInt(el.defaultOption?.value) || 1,
+		hideUsername: el.hideUsername?.checked || false,
+		keepScreenOn: el.keepScreenOn?.checked || false,
+		autoStopTime: parseInt(el.autoStopTime?.value) || 0,
+	};
+	settings = newSettings;
+	saveSettings(newSettings);
+	return newSettings;
+};
+
+const populateDefaultOptionSelect = (optionsArray) => {
+	const select = shadowRoot.getElementById('default-option');
+	select.innerHTML = '';
+	optionsArray.forEach((opt, index) => {
+		const option = document.createElement('option');
+		option.value = index.toString();
+		option.textContent = opt.label;
+		if (opt.disabled) option.disabled = true;
+		select.appendChild(option);
+	});
+};
+
+const loadDefaultFarmingOption = () => {
+	const select = shadowRoot.getElementById('select-option');
+	select.selectedIndex = settings.defaultOption;
+};
+
+const addEventSettings = (container) => {
+	const { settingsBtn, settingsContainer, settingsClose } = getElements();
+	const modal = toggleModal(settingsContainer, container);
+	settingsBtn.addEventListener('click', modal.show);
+	settingsClose.addEventListener('click', modal.hide);
+};
+
+const addSettingsEventListeners = () => {
+	const el = getSettingsElements();
+
+	el.saveSettingsBtn.addEventListener('click', () => {
+		saveSettingsFromUI();
+		alert('Settings saved successfully, reload the page to apply changes!');
+		confirm('Reload now?') && location.reload();
+	});
+
+	el.getJwtTokenBtn.addEventListener('click', () => {
+		const token = getJwtToken();
+		if (token) {
+			confirm(`Your JWT Token:\n\n${token}\n\nCopy to clipboard?`) && navigator.clipboard.writeText(token);
+		}
+	});
+
+	el.resetSetting.addEventListener('click', () => {
+		if (confirm('Reset all settings to default? This cannot be undone.')) {
+			localStorage.removeItem('duofarmerSettings');
+			settings = { ...DEFAULT_SETTINGS };
+			loadSettingsToUI();
+			alert('All settings reset successfully! Reload to apply changes.');
+		}
+	});
 };
 
 const setRunningState = (running) => {
@@ -68,7 +170,6 @@ const setRunningState = (running) => {
 		startBtn.disabled = true;
 		startBtn.className = 'disable-btn';
 		select.disabled = false;
-		// Xóa timer khi dừng
 		if (autoStopTimerId) {
 			clearTimeout(autoStopTimerId);
 			autoStopTimerId = null;
@@ -109,13 +210,11 @@ const initInterface = () => {
 
 	document.body.appendChild(container);
 
-	// Hide settings container initially
 	const settingsContainer = shadowRoot.getElementById('settings-container');
 	if (settingsContainer) {
 		settingsContainer.style.display = 'none';
 	}
 
-	// Validate required elements exist
 	const requiredElements = [
 		'start-btn', 'stop-btn', 'select-option', 'floating-btn',
 		'container', 'overlay', 'notify'
@@ -128,7 +227,6 @@ const initInterface = () => {
 	}
 };
 
-// UI toggle helpers
 const showElement = (element) => {
 	if (element) element.style.display = 'flex';
 };
@@ -180,7 +278,6 @@ const addEventStartBtn = () => {
 	startBtn.addEventListener('click', async () => {
 		setRunningState(true);
 
-		// Logic auto-stop dựa trên runtimeSettings
 		if (runtimeSettings.autoStopTime > 0) {
 			autoStopTimerId = setTimeout(() => {
 				alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
@@ -220,10 +317,9 @@ const toggleInterface = () => {
 const addEventListeners = () => {
 	addEventStartBtn();
 	addEventStopBtn();
-
 	const { container } = getElements();
-	settingsManager.addEventSettings(container);
-	settingsManager.addEventListeners();
+	addEventSettings(container);
+	addSettingsEventListeners();
 };
 
 const populateOptions = () => {
@@ -248,7 +344,6 @@ const updateNotify = (message) => {
 	log(`[${now}] ${message}`);
 };
 
-
 const updateUserInfo = () => {
 	const elements = getElements();
 	if (userInfo) {
@@ -258,31 +353,8 @@ const updateUserInfo = () => {
 		elements.streak.innerText = userInfo.streak;
 		elements.gem.innerText = userInfo.gems;
 		elements.xp.innerText = userInfo.totalXp;
-		
-		// Check privacy settings
-		hideElement(userInfo.privacySettings && (
-			userInfo.privacySettings.includes('DISABLE_FRIENDS_QUESTS') ||
-			userInfo.privacySettings.includes('DISABLE_LEADERBOARDS')
-		) ? elements.setAccountPrivate : elements.setAccountPublic);
-		
-		elements.userInfoDisplay.innerText = JSON.stringify({
-			id: userInfo.id,
-			username: userInfo.username,
-			fromLanguage: userInfo.fromLanguage,
-			learningLanguage: userInfo.learningLanguage,
-			streak: userInfo.streak,
-			gems: userInfo.gems,
-			totalXp: userInfo.totalXp,
-			creationDate: userInfo.creationDate,
-			skillId: skillId,
-			jwt: "hidden - use get jwt button to view",
-			sub: sub,
-			privacySettings: userInfo.privacySettings,
-			streakData: userInfo.streakData
-		}, null, 2);
 	}
 };
-
 
 const updateFarmResult = (type, farmedAmount) => {
 	switch (type) {
@@ -306,7 +378,7 @@ const gemFarmingLoop = async () => {
 	const gemFarmed = 30;
 	while (isRunning) {
 		try {
-			await apiService.farmGemOnce(userInfo);
+			await apiService.farmGemOnce();
 			updateFarmResult('gem', gemFarmed);
 			await delay(runtimeSettings.delayTime);
 		} catch (error) {
@@ -316,17 +388,12 @@ const gemFarmingLoop = async () => {
 	}
 };
 
-const xpFarmingLoop = async (value, amount, config = {}) => {
+const xpFarmingLoop = async (config = {}) => {
 	while (isRunning) {
 		try {
-			let response;
-			if (value === 'session') {
-				response = await apiService.farmSessionOnce(config);
-			} else if (value === 'story') {
-				response = await apiService.farmStoryOnce(config);
-			}
+			const response = await apiService.farmSessionOnce(config);
 			if (response.status > 400) {
-				updateNotify(`Something went wrong! Pls try other farming methods.\nIf you are using story method, u should try with English course!`);
+				updateNotify(`Something went wrong! Pls try other farming methods.`);
 				await delay(runtimeSettings.retryTime);
 				continue;
 			}
@@ -433,7 +500,7 @@ const farmSelectedOption = async (option) => {
 			gemFarmingLoop();
 			break;
 		case 'xp':
-			xpFarmingLoop(value, amount, config);
+			xpFarmingLoop(config);
 			break;
 		case 'streak':
 			streakFarmingLoop(value);
@@ -441,7 +508,7 @@ const farmSelectedOption = async (option) => {
 	}
 };
 
-const loadSavedSettings = (settings) => {
+const loadSavedSettings = () => {
 	runtimeSettings = { ...runtimeSettings, ...settings };
 
 	const elements = getElements();
@@ -456,12 +523,11 @@ const loadSavedSettings = (settings) => {
 		elements.username.classList.add('blur');
 	}
 	if (settings.keepScreenOn && 'wakeLock' in navigator) {
-		navigator.wakeLock.request('screen').then(wakeLock => {
+		navigator.wakeLock.request('screen').then(() => {
 			log('Screen wake lock active');
-		})
+		});
 	}
 };
-
 
 const initVariables = async () => {
 	jwt = getJwtToken();
@@ -469,15 +535,13 @@ const initVariables = async () => {
 		disableAllControls('Please login to Duolingo and reload!');
 		return;
 	}
-	defaultHeaders = formatHeaders(jwt);
+	const headers = formatHeaders(jwt);
 	const decodedJwt = decodeJwtToken(jwt);
 	sub = decodedJwt.sub;
-	userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
-	
-	apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
-	settingsManager = new SettingsManager(shadowRoot, apiService);
+	userInfo = await getUserInfo(sub, headers);
 
-	//Lấy skillId cho option 110 xp, sau đó tạo options
+	apiService = createApi(jwt, userInfo);
+
 	skillId = extractSkillId(userInfo.currentCourse || {});
 	farmOptions = [
 		{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
@@ -485,35 +549,10 @@ const initVariables = async () => {
 		{ type: 'separator', label: '⟡ XP SESSION FARMING ⟡', value: '', disabled: true },
 		{ type: 'separator', label: '(slow, safe, any language)', value: '', disabled: true },
 		{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
-		// { type: 'xp', label: 'XP 13', value: 'session', amount: 13, config: { updateSessionPayload: { enableBonusPoints: true } } },
 		{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: { updateSessionPayload: { hasBoost: true } } },
-		// { type: 'xp', label: 'XP 26', value: 'session', amount: 26, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true } } },
-		// { type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10 } } },
 		{ type: 'xp', label: 'XP 40', value: 'session', amount: 40, config: { updateSessionPayload: { hasBoost: true, type: 'TARGET_PRACTICE' } } },
 		{ type: 'xp', label: 'XP 50', value: 'session', amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: 'TARGET_PRACTICE' } } },
 		{ type: 'xp', label: 'XP 110', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
-		// {
-		// 	type: 'xp', label: 'TEST', value: 'session', amount: 0, config: {
-		// 		sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] },
-		// 		updateSessionPayload: {
-		// 			hasBoost: true,
-		// 			happyHourBonusXp: 10,
-		// 			pathLevelSpecifics: {
-		// 				unitIndex: 0,
-		// 			}
-		// 		}
-		// 	},
-		// 	disabled: !skillId
-		// },
-		{ type: 'separator', label: '⟡ XP STORY FARMING ⟡', value: '', disabled: true },
-		{ type: 'separator', label: '(fast, unsafe, English only) ', value: '', disabled: true },
-		{ type: 'xp', label: 'XP 50', value: 'story', amount: 50, config: {} },
-		// { type: 'xp', label: 'XP 90 ', value: 'story', amount: 90, config: { storyPayload: { hasXpBoost: true } } },
-		{ type: 'xp', label: 'XP 100 ', value: 'story', amount: 100, config: { storyPayload: { happyHourBonusXp: 50 } } },
-		{ type: 'xp', label: 'XP 200 ', value: 'story', amount: 200, config: { storyPayload: { happyHourBonusXp: 150 } } },
-		{ type: 'xp', label: 'XP 300 ', value: 'story', amount: 300, config: { storyPayload: { happyHourBonusXp: 250 } } },
-		{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { storyPayload: { happyHourBonusXp: 350 } } },
-		{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { storyPayload: { happyHourBonusXp: 449 } } },
 		{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
 		{ type: 'streak', label: 'Nonstop farm (unlimited)', value: 'farm' },
 		{ type: 'streak', label: 'Repair streak (from account creation)', value: 'repair' },
@@ -521,25 +560,25 @@ const initVariables = async () => {
 };
 
 const initSettings = () => {
-	// Load option lên setting menu và ghi đè defaultOption lên main
-	settingsManager.populateDefaultOptionSelect(farmOptions);
-	settingsManager.loadDefaultFarmingOption(farmOptions);
-	settingsManager.loadSettingsToUI();
-}
+	settings = loadSettings();
+	populateDefaultOptionSelect(farmOptions);
+	loadDefaultFarmingOption();
+	loadSettingsToUI();
+};
 
 
 (async () => {
 	try {
-		initInterface(); //khởi tạo giao diện
-		setInterfaceVisible(false); //ẩn giao diện
-		addEventFloatingBtn(); //thêm sự kiện cho floating button
-		await initVariables(); //khởi tạo biến, class
-		populateOptions(); //gắn options lên giao diện
-		initSettings(); //cấu hình setting
-		updateUserInfo(); //cập nhật thông tin user
-		addEventListeners(); // thêm các sự kiện còn lại
-		loadSavedSettings(settingsManager.getSettings()); //tải setting đã lưu
-		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.\nLimited or no use of "Story Farming"!');
+		initInterface();
+		setInterfaceVisible(false);
+		addEventFloatingBtn();
+		await initVariables();
+		populateOptions();
+		initSettings();
+		updateUserInfo();
+		addEventListeners();
+		loadSavedSettings();
+		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.');
 	} catch (err) {
 		logError(err, 'Duofarmer init error!');
 	}

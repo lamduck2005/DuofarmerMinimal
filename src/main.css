@@ -123,12 +123,6 @@
   align-items: center;
 }
 
-#header-left img {
-  width: 32px;
-  height: 32px;
-  margin-right: 8px;
-  vertical-align: middle;
-}
 
 #notify {
   width: 90%;
@@ -408,16 +402,6 @@
   filter: blur(4px);
 }
 
-code {
-  background: #333;
-  margin: 10px 0px;
-  padding: 8px 12px;
-  border-left: #229100 3px solid;
-  font-family: monospace;
-  line-height: 1.5em;
-  display: block;
-  border-radius: 2px;
-}
 
 .disable-btn {
   background: #52454560 !important;
@@ -439,10 +423,6 @@ code {
   font-size: 1em;
 }
 
-.muted {
-  color: #555 !important;
-  font-size: smaller !important;
-}
 
 .table {
   width: 100%;

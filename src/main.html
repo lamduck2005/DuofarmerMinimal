@@ -2,7 +2,6 @@
 <div id="container">
   <div id="header">
     <div id="header-left">
-      <img src="https://img.icons8.com/?size=48&id=mPfeGOwngGmN&format=png&color=000000">
       <span class="label">Duofarmer</span>
     </div>
     <button id="settings-btn">⚙️</button>
@@ -41,10 +40,7 @@
       </tbody>
     </table>
     <div id="action-row">
-      <select id="select-option">
-        <!-- <option value="option1">Option 1</option> -->
-        <!-- <option value="option2">Option 2</option> -->
-      </select>
+      <select id="select-option"></select>
       <button id="start-btn">Start</button>
       <button id="stop-btn" hidden>Stop</button>
     </div>
@@ -74,9 +70,7 @@
         </div>
         <div class="setting-item">
           <span>Default farming option</span>
-          <select id="default-option">
-            <!-- option auto -->
-          </select>
+          <select id="default-option"></select>
         </div>
         <div class="setting-item">
           <span>Hide username</span>
@@ -90,19 +84,6 @@
       <div class="settings-group">
         <h3>Performance</h3>
         <div class="setting-item">
-          <span>Delay time (100ms - 10000ms):
-            <br>
-            <i class="muted">(Lower delay = faster = high limit rate ban)</i>
-          </span>
-          <input type="number" id="delay-time" min="100" max="10000" value="500">
-        </div>
-        <div class="setting-item">
-          <span>Retry time (100ms - 10000ms):
-            <br>
-          </span>
-          <input type="number" id="retry-time" min="100" max="10000" value="1000">
-        </div>
-        <div class="setting-item">
           <span>Auto stop after (min) (set 0 for unlimited)</span>
           <input type="number" id="auto-stop-time" min="0" max="60" value="0">
         </div>
@@ -112,18 +93,6 @@
         <div class="setting-item">
           <span>Get ur JWT token</span>
           <button id="get-jwt-token" class="setting-btn">Get Token</button>
-        </div>
-        <div class="setting-item">
-          <span>Set account to public</span>
-          <button id="set-account-public" class="setting-btn">Set Public</button>
-        </div>
-        <div class="setting-item">
-          <span>Set account to private</span>
-          <button id="set-account-private" class="setting-btn">Set Private</button>
-        </div>
-        <div class="setting-item">
-          <span>Quick logout</span>
-          <button id="quick-logout" class="setting-btn">Logout</button>
         </div>
         <div class="setting-item">
           <span>Reset setting</span>
@@ -157,28 +126,6 @@
           <a href="https://greasyfork.org/en/scripts?set=593926" target="_blank">Here</a>
         </div>
       </div>
-
-      <div class="settings-group">
-        <h3>Donate me (please 😭)</h3>
-        <div class="setting-item">
-          <span>Donate via PayPal</span>
-          <a href="https://duo-farmer.vercel.app/donate/paypal" target="_blank">Here</a>
-        </div>
-        <div class="setting-item">
-          <span>Donate via Momo ( Vietnam )</span>
-          <a>Pls text me in telegram 😘</a>
-        </div>
-      </div>
-
-      <div class="settings-group">
-        <h3>All userinfo (json)</h3>
-        <div class="setting-item">
-          <code id="user-info-display">
-              Loading...
-            </code>
-        </div>
-      </div>
-
     </div>
     <div class="modal-footer">
       <span></span>
