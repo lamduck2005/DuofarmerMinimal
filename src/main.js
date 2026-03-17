@@ -311,9 +311,20 @@ const toggleInterface = () => {
 	setInterfaceVisible(!isInterfaceVisible());
 };
 
+const addEventStatCards = () => {
+	const cards = shadowRoot.querySelectorAll('.stat-card');
+	cards.forEach(card => {
+		card.addEventListener('click', () => {
+			cards.forEach(c => c.classList.remove('active'));
+			card.classList.add('active');
+		});
+	});
+};
+
 const addEventListeners = () => {
 	addEventStartBtn();
 	addEventStopBtn();
+	addEventStatCards();
 	const { container } = getElements();
 	addEventSettings(container);
 	addSettingsEventListeners();
