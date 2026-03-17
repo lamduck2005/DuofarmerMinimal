@@ -350,13 +350,42 @@ const updateNotify = (message) => {
 	log(`[${now}] ${message}`);
 };
 
+
+const animateNumber = (element, toValue, duration = 700) => {
+	cancelAnimationFrame(element._animFrame);
+
+	const fromValue = parseFloat(element.textContent.replace(/,/g, '')) || 0;
+	if (fromValue === toValue) return;
+
+	const tilt = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 6);
+	element.style.setProperty('--tilt', `${tilt.toFixed(1)}deg`);
+	element.style.setProperty('--anim-dur', `${duration}ms`);
+	element.classList.remove('counting');
+	void element.offsetWidth;
+	element.classList.add('counting');
+
+	const startTime = performance.now();
+	const diff = toValue - fromValue;
+
+	const tick = (now) => {
+		const progress = Math.min((now - startTime) / duration, 1);
+		const eased = 1 - Math.pow(2, -10 * progress);
+		element.textContent = Math.round(fromValue + diff * eased).toLocaleString();
+		element._animFrame = progress < 1
+			? requestAnimationFrame(tick)
+			: void (element.textContent = toValue.toLocaleString(), element.classList.remove('counting'));
+	};
+
+	element._animFrame = requestAnimationFrame(tick);
+};
+
 const updateUserInfo = () => {
 	const elements = getElements();
 	if (userInfo) {
 		elements.username.innerText = userInfo.username;
-		elements.streak.innerText = userInfo.streak;
-		elements.gem.innerText = userInfo.gems;
-		elements.xp.innerText = userInfo.totalXp;
+		animateNumber(elements.streak, userInfo.streak);
+		animateNumber(elements.gem, userInfo.gems);
+		animateNumber(elements.xp, userInfo.totalXp);
 	}
 };
 

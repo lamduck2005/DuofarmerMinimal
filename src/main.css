@@ -124,10 +124,57 @@
 
 .stat-icon { width: 24px; height: 24px; flex-shrink: 0; }
 
+
+/* wave 1: hạt nhỏ crisp, bay nhanh */
+@keyframes fw-wave1 {
+  0%   { opacity:1; box-shadow: 0 0 0 1px #f97316, 0 0 0 1px #34d399, 0 0 0 1px #38bdf8, 0 0 0 1px #facc15, 0 0 0 1px #c084fc, 0 0 0 1px #fb7185; }
+  60%  { opacity:.9; box-shadow: -18px -14px 0 1px #f97316, 14px -22px 0 1px #34d399, 24px 4px 0 1px #38bdf8, -6px 24px 0 1px #facc15, -24px 6px 0 1px #c084fc, 10px 22px 0 1px #fb7185; }
+  100% { opacity:0; box-shadow: -22px -18px 0 1px #f97316, 18px -26px 0 1px #34d399, 28px 5px 0 1px #38bdf8, -7px 28px 0 1px #facc15, -28px 8px 0 1px #c084fc, 12px 26px 0 1px #fb7185; }
+}
+/* wave 2: hạt nhỏ hơn, bay chậm hơn, delay nhẹ */
+@keyframes fw-wave2 {
+  0%   { opacity:1; box-shadow: 0 0 0 1px #00d1ff, 0 0 0 1px #a3e635, 0 0 0 1px #facc15, 0 0 0 1px #f97316, 0 0 0 1px #c084fc, 0 0 0 1px #34d399; }
+  70%  { opacity:.8; box-shadow: 20px -18px 0 1px #00d1ff, -16px -20px 0 1px #a3e635, 22px 12px 0 1px #facc15, -20px 14px 0 1px #f97316, 8px -24px 0 1px #c084fc, -8px 24px 0 1px #34d399; }
+  100% { opacity:0; box-shadow: 24px -22px 0 1px #00d1ff, -20px -24px 0 1px #a3e635, 26px 14px 0 1px #facc15, -24px 16px 0 1px #f97316, 10px -28px 0 1px #c084fc, -10px 28px 0 1px #34d399; }
+}
+
+@keyframes num-pop {
+  0%   { transform: scale(1)    rotate(0deg); }
+  25%  { transform: scale(1.35) rotate(var(--tilt)); }
+  70%  { transform: scale(1.1)  rotate(calc(var(--tilt) * -.25)); }
+  100% { transform: scale(1)    rotate(0deg); }
+}
+
 .stat-value {
   font-size: 1.15em;
   font-weight: 700;
   line-height: 1;
+  display: inline-block;
+  position: relative;
+}
+
+.stat-value.counting {
+  animation: num-pop var(--anim-dur, 700ms) ease-out forwards;
+}
+
+.stat-value.counting::before,
+.stat-value.counting::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.stat-value.counting::before {
+  animation: fw-wave1 calc(var(--anim-dur, 700ms) * .75) ease-out forwards;
+}
+.stat-value.counting::after {
+  animation: fw-wave2 var(--anim-dur, 700ms) ease-out forwards;
+  animation-delay: 40ms;
 }
 
 
