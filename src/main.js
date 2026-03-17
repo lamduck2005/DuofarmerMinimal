@@ -55,10 +55,7 @@ const getElements = () => {
 		floatingBtn: shadowRoot.getElementById('floating-btn'),
 		container: shadowRoot.getElementById('container'),
 		overlay: shadowRoot.getElementById('overlay'),
-		notify: shadowRoot.getElementById('notify'),
 		username: shadowRoot.getElementById('username'),
-		from: shadowRoot.getElementById('from'),
-		learn: shadowRoot.getElementById('learn'),
 		streak: shadowRoot.getElementById('streak'),
 		gem: shadowRoot.getElementById('gem'),
 		xp: shadowRoot.getElementById('xp'),
@@ -217,7 +214,7 @@ const initInterface = () => {
 
 	const requiredElements = [
 		'start-btn', 'stop-btn', 'select-option', 'floating-btn',
-		'container', 'overlay', 'notify'
+		'container', 'overlay',
 	];
 
 	for (const id of requiredElements) {
@@ -338,9 +335,7 @@ const populateOptions = () => {
 };
 
 const updateNotify = (message) => {
-	const { notify } = getElements();
 	const now = new Date().toLocaleTimeString();
-	notify.innerText = `[${now}] ` + message;
 	log(`[${now}] ${message}`);
 };
 
@@ -348,8 +343,6 @@ const updateUserInfo = () => {
 	const elements = getElements();
 	if (userInfo) {
 		elements.username.innerText = userInfo.username;
-		elements.from.innerText = userInfo.fromLanguage;
-		elements.learn.innerText = userInfo.learningLanguage;
 		elements.streak.innerText = userInfo.streak;
 		elements.gem.innerText = userInfo.gems;
 		elements.xp.innerText = userInfo.totalXp;
