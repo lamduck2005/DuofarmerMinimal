@@ -15,6 +15,15 @@ let userInfo = null;
 let sub = null;
 let skillId = null;
 
+const LANG_TO_COUNTRY = {
+	'en': 'us', 'vi': 'vn', 'ja': 'jp', 'ko': 'kr', 'zh': 'cn', 'zs': 'cn',
+	'ar': 'sa', 'he': 'il', 'hi': 'in', 'bn': 'bd', 'ta': 'in', 'te': 'in',
+	'da': 'dk', 'nb': 'no', 'sv': 'se', 'el': 'gr', 'cs': 'cz', 'uk': 'ua',
+	'cy': 'gb', 'ga': 'ie', 'ca': 'es', 'sw': 'ke', 'tl': 'ph',
+	'haw': 'us', 'nah': 'mx', 'nv': 'us', 'zu': 'za', 'yi': 'il',
+	'eo': null, 'la': null, 'tlh': null, 'hv': null,
+};
+
 let isRunning = false;
 
 let shadowRoot = null;
@@ -54,7 +63,6 @@ const getElements = () => {
 		select: shadowRoot.getElementById('select-option'),
 		floatingBtn: shadowRoot.getElementById('floating-btn'),
 		container: shadowRoot.getElementById('container'),
-		overlay: shadowRoot.getElementById('overlay'),
 		username: shadowRoot.getElementById('username'),
 		streak: shadowRoot.getElementById('streak'),
 		gem: shadowRoot.getElementById('gem'),
@@ -115,8 +123,12 @@ const populateDefaultOptionSelect = (optionsArray) => {
 };
 
 const loadDefaultFarmingOption = () => {
+	const defaultOpt = farmOptions[settings.defaultOption];
+	const type = (defaultOpt && defaultOpt.type !== 'separator') ? defaultOpt.type : 'xp';
+	filterSelectByType(type);
 	const select = shadowRoot.getElementById('select-option');
-	select.selectedIndex = settings.defaultOption;
+	const target = select.querySelector(`option[data-index="${settings.defaultOption}"]`);
+	if (target) target.selected = true;
 };
 
 const addEventSettings = (container) => {
@@ -154,7 +166,8 @@ const addSettingsEventListeners = () => {
 
 const setRunningState = (running) => {
 	isRunning = running;
-	const { startBtn, stopBtn, select } = getElements();
+	const { startBtn, stopBtn, select, container } = getElements();
+	container.classList.toggle('running', running);
 	if (running) {
 		startBtn.hidden = true;
 		stopBtn.hidden = false;
@@ -214,7 +227,7 @@ const initInterface = () => {
 
 	const requiredElements = [
 		'start-btn', 'stop-btn', 'select-option', 'floating-btn',
-		'container', 'overlay',
+		'container',
 	];
 
 	for (const id of requiredElements) {
@@ -225,11 +238,22 @@ const initInterface = () => {
 };
 
 const showElement = (element) => {
-	if (element) element.style.display = 'flex';
+	if (!element) return;
+	element.style.display = 'flex';
+	element.classList.remove('anim-out');
+	void element.offsetWidth;
+	element.classList.add('anim-in');
 };
 
 const hideElement = (element) => {
-	if (element) element.style.display = 'none';
+	if (!element) return;
+	element.classList.remove('anim-in');
+	void element.offsetWidth;
+	element.classList.add('anim-out');
+	element.addEventListener('animationend', () => {
+		element.style.display = 'none';
+		element.classList.remove('anim-out');
+	}, { once: true });
 };
 
 const toggleModal = (modalElement, mainElement) => {
@@ -246,26 +270,17 @@ const toggleModal = (modalElement, mainElement) => {
 };
 
 const setInterfaceVisible = (visible) => {
-	const { container, overlay } = getElements();
+	const { container } = getElements();
 	if (visible) {
 		showElement(container);
-		showElement(overlay);
 	} else {
 		hideElement(container);
-		hideElement(overlay);
 	}
 };
 
 const addEventFloatingBtn = () => {
 	const { floatingBtn } = getElements();
 	floatingBtn.addEventListener('click', () => {
-		if (isRunning) {
-			if (confirm('Duofarmer is farming. Do you want to stop and hide UI?')) {
-				setRunningState(false);
-				setInterfaceVisible(false);
-			}
-			return;
-		}
 		toggleInterface();
 	});
 };
@@ -312,11 +327,12 @@ const toggleInterface = () => {
 };
 
 const addEventStatCards = () => {
-	const cards = shadowRoot.querySelectorAll('.stat-card');
-	cards.forEach(card => {
+	const typeMap = { 'streak-card': 'streak', 'xp-card': 'xp', 'gem-card': 'gem' };
+	shadowRoot.querySelectorAll('.stat-card').forEach(card => {
 		card.addEventListener('click', () => {
-			cards.forEach(c => c.classList.remove('active'));
-			card.classList.add('active');
+			if (isRunning) return;
+			const type = Object.keys(typeMap).find(cls => card.classList.contains(cls));
+			if (type) filterSelectByType(typeMap[type]);
 		});
 	});
 };
@@ -333,16 +349,35 @@ const addEventListeners = () => {
 const populateOptions = () => {
 	const select = shadowRoot.getElementById('select-option');
 	select.innerHTML = '';
-	farmOptions.forEach((opt) => {
+	farmOptions.forEach((opt, index) => {
+		if (opt.type === 'separator') return;
 		const option = document.createElement('option');
 		option.value = opt.value;
 		option.textContent = opt.label;
 		option.setAttribute('data-type', opt.type);
+		option.setAttribute('data-index', index);
 		if (opt.amount != null) option.setAttribute('data-amount', String(opt.amount));
 		if (opt.config) option.setAttribute('data-config', JSON.stringify(opt.config));
 		if (opt.disabled) option.disabled = true;
+		option.hidden = true;
 		select.appendChild(option);
 	});
+};
+
+const filterSelectByType = (type) => {
+	const select = shadowRoot.getElementById('select-option');
+	const typeToClass = { streak: 'streak-card', xp: 'xp-card', gem: 'gem-card' };
+
+	shadowRoot.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+	const targetCard = shadowRoot.querySelector(`.${typeToClass[type]}`);
+	if (targetCard) targetCard.classList.add('active');
+
+	select.querySelectorAll('option[data-type]').forEach(opt => {
+		opt.hidden = opt.dataset.type !== type;
+	});
+
+	const first = Array.from(select.options).find(o => o.dataset.type === type && !o.disabled);
+	if (first) first.selected = true;
 };
 
 const updateNotify = (message) => {
@@ -386,6 +421,11 @@ const updateUserInfo = () => {
 		animateNumber(elements.streak, userInfo.streak);
 		animateNumber(elements.gem, userInfo.gems);
 		animateNumber(elements.xp, userInfo.totalXp);
+
+		const lang = userInfo.fromLanguage?.toLowerCase();
+		const country = lang in LANG_TO_COUNTRY ? LANG_TO_COUNTRY[lang] : lang;
+		const flagEl = shadowRoot.getElementById('avatar-flag');
+		if (flagEl && country) flagEl.src = `https://flagcdn.com/${country}.svg`;
 	}
 };
 

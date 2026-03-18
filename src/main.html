@@ -29,8 +29,8 @@
   </symbol>
 </svg>
 
-<div id="overlay"></div>
-
+<div id="ui-wrapper">
+<div id="floating-btn">🐸</div>
 <div id="container">
   <div id="body">
     <div id="table-progress" class="table stats-grid">
@@ -72,7 +72,7 @@
           <span>Start</span>
         </button>
         <button id="stop-btn" hidden>
-          <svg width="20" height="20" fill="currentColor"><use href="#ic-stop"/></svg>
+          <span class="spinner"></span>
           <span>Stop</span>
         </button>
       </div>
@@ -88,10 +88,7 @@
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
           </svg>
         </div>
-        <svg class="avatar-flag" viewBox="5 0 20 20" xmlns="http://www.w3.org/2000/svg">
-          <rect fill="#da251d" width="30" height="20"/>
-          <polygon fill="#ffff00" points="15,4 16.176,8.472 20.755,8.472 17.05,11.236 18.226,15.708 14.521,12.944 10.816,15.708 11.992,11.236 8.287,8.472 12.866,8.472" transform="translate(0.5 0)"/>
-        </svg>
+        <img id="avatar-flag" class="avatar-flag" src="https://flagcdn.com/vn.svg" alt="flag"/>
       </div>
       <span id="username" class="label">duofarmer</span>
     </div>
@@ -167,4 +164,4 @@
   </div>
 </div>
 
-<div id="floating-btn">🐸</div>
+</div>
