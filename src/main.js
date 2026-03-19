@@ -196,13 +196,30 @@ const setRunningState = (running) => {
 };
 
 const disableAllControls = (notifyMessage = null) => {
-	const { startBtn, stopBtn, select } = getElements();
+	const { startBtn, stopBtn, farmSelect } = getElements();
 	startBtn.disabled = true;
 	startBtn.className = 'disable-btn';
 	stopBtn.disabled = true;
-	select.disabled = true;
-	if (notifyMessage) {
-		updateNotify(notifyMessage);
+	if (farmSelect) farmSelect.classList.add('disabled');
+	if (notifyMessage) updateNotify(notifyMessage);
+};
+
+const setLoadingOverlay = (visible, message = 'DuoFarmer is loading...', isError = false) => {
+	const overlay = shadowRoot?.getElementById('loading-overlay');
+	if (!overlay) return;
+	const text = overlay.querySelector('.loading-text');
+	const duopixel = overlay.querySelector('.loading-duopixel');
+	const ringBefore = overlay.querySelector('.loading-ring');
+	if (text) {
+		text.textContent = message;
+		text.style.color = isError ? '#f87171' : '';
+	}
+	if (duopixel) duopixel.style.background = isError ? '#dc2626' : '';
+	if (ringBefore) ringBefore.style.setProperty('--ring-color', isError ? '#dc2626' : '#10b981');
+	if (visible) {
+		overlay.classList.remove('hidden');
+	} else {
+		overlay.classList.add('hidden');
 	}
 };
 
@@ -602,11 +619,21 @@ const loadSavedSettings = () => {
 	}
 };
 
+const waitForJwt = () => new Promise((resolve) => {
+	const attempt = () => {
+		const token = getJwtToken();
+		if (token) return resolve(token);
+		setLoadingOverlay(true, 'Waiting for login...', true);
+		setTimeout(attempt, 2000);
+	};
+	attempt();
+});
+
 const initVariables = async () => {
 	jwt = getJwtToken();
 	if (!jwt) {
-		disableAllControls('Please login to Duolingo and reload!');
-		return;
+		jwt = await waitForJwt();
+		setLoadingOverlay(true, 'DuoFarmer is loading...');
 	}
 	const headers = formatHeaders(jwt);
 	const decodedJwt = decodeJwtToken(jwt);
@@ -639,19 +666,27 @@ const initSettings = () => {
 };
 
 
+const applyAutoOpenMenu = () => {
+	setInterfaceVisible(loadSettings()?.autoOpenUI ?? false);
+};
+
 (async () => {
 	try {
 		initInterface();
-		setInterfaceVisible(false);
 		addEventFloatingBtn();
+		applyAutoOpenMenu();
+
 		await initVariables();
+
 		populateOptions();
 		initSettings();
 		updateUserInfo();
 		addEventListeners();
 		loadSavedSettings();
+		setLoadingOverlay(false);
 		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.');
 	} catch (err) {
 		logError(err, 'Duofarmer init error!');
+		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);
 	}
 })();
