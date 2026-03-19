@@ -4,23 +4,6 @@
 
 DuoFarmer is a powerful tool that helps you automatically farm XP, Gems, and Streaks on Duolingo! Whether you want to boost your experience points, collect gems for rewards, or repair frozen streaks, DuoFarmer has you covered.
 
-### Key Features:
-- 🚀 **Gem Farming**: Farm 30 gems per session
-- 📈 **XP Session Farming**: Safe XP farming (10-110 XP) - works with any language
-- ⚡ **XP Story Farming**: Fast XP farming (50-499 XP) - English course only, use with caution
-- 🔥 **Streak Farming**: Repair frozen streaks automatically
-- ⚙️ **Customizable Settings**:
-  - Adjustable delay and retry times (100-10000ms)
-  - Auto-stop timer (minutes)
-  - Auto-start farming on page load
-  - Auto-open UI
-  - Default farming option selection
-  - Keep screen awake during farming
-  - Username hiding for privacy
-  - Account privacy toggle (public/private)
-- 🎨 **User-Friendly Interface**: Clean, responsive UI with floating button
-- 🔒 **Secure**: Uses your existing JWT token, no account compromise
-
 ### Safety Warning:
 - **Use secondary accounts** for farming to avoid bans
 - **Limited use of Story Farming** - it's fast but risky
@@ -36,7 +19,6 @@ This script is open-source and licensed under the **Creative Commons BY-NC-SA 4.
 - **ShareAlike**: If you create a new version based on this script, you must distribute it under the same CC BY-NC-SA 4.0 license.
 
 ## Links:
-- **Homepage**: https://duo-farmer.vercel.app
 - **Telegram Group**: [@duofarmer](https://t.me/duofarmer)
 - **License**: [Creative Commons BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
@@ -51,10 +33,6 @@ This script is open-source and licensed under the **Creative Commons BY-NC-SA 4.
 
 ### Development Setup
 1. Clone the repository:
-```bash
-git clone https://github.com/lamduck2005/DuofarmerMinimal.git
-cd DuofarmerMinimal
-```
 
 2. Install dependencies:
 ```bash
@@ -87,25 +65,6 @@ The built userscript will be available at `dist/duofarmer.user.js`
 - `npm run preview` - Preview the built userscript
 
 ---
-
-## Project Structure
-```
-DuofarmerMinimal/
-├── src/
-│   ├── main.js           # Main application logic
-│   ├── main.html         # UI template
-│   ├── main.css          # Styles
-│   ├── service/
-│   │   └── api.js        # Duolingo API service
-│   ├── settings/
-│   │   └── settings-manager.js  # Settings management
-│   └── utils/
-│       └── utils.js      # Utility functions
-├── dist/                 # Built files
-├── package.json
-├── vite.config.mjs       # Vite configuration
-└── README.md
-```
 
 ## Contributing
 This project welcomes contributions. Please read the license terms before contributing.
