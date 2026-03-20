@@ -4,7 +4,8 @@ export const DEFAULT_SETTINGS = {
     defaultOption: 1,
     hideUsername: false,
     keepScreenOn: false,
-    autoStopTime: 0
+    autoStopTime: 0,
+    farmAnimation: false,
 }
 
 export function loadSettings() {

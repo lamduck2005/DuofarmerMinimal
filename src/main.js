@@ -80,6 +80,7 @@ const getSettingsElements = () => ({
 	hideUsername: shadowRoot.getElementById('hide-username'),
 	keepScreenOn: shadowRoot.getElementById('keep-screen-on'),
 	autoStopTime: shadowRoot.getElementById('auto-stop-time'),
+	farmAnimation: shadowRoot.getElementById('farm-animation'),
 	saveSettingsBtn: shadowRoot.getElementById('save-settings'),
 	getJwtTokenBtn: shadowRoot.getElementById('get-jwt-token'),
 	resetSetting: shadowRoot.getElementById('reset-setting'),
@@ -93,6 +94,7 @@ const loadSettingsToUI = () => {
 	if (el.hideUsername) el.hideUsername.checked = settings.hideUsername;
 	if (el.keepScreenOn) el.keepScreenOn.checked = settings.keepScreenOn;
 	if (el.autoStopTime) el.autoStopTime.value = settings.autoStopTime;
+	if (el.farmAnimation) el.farmAnimation.checked = settings.farmAnimation;
 };
 
 const saveSettingsFromUI = () => {
@@ -104,6 +106,7 @@ const saveSettingsFromUI = () => {
 		hideUsername: el.hideUsername?.checked || false,
 		keepScreenOn: el.keepScreenOn?.checked || false,
 		autoStopTime: parseInt(el.autoStopTime?.value) || 0,
+		farmAnimation: el.farmAnimation?.checked || false,
 	};
 	settings = newSettings;
 	saveSettings(newSettings);
@@ -408,6 +411,11 @@ const animateNumber = (element, toValue, duration = 700) => {
 
 	const fromValue = parseFloat(element.textContent.replace(/,/g, '')) || 0;
 	if (fromValue === toValue) return;
+
+	if (!settings?.farmAnimation) {
+		element.textContent = toValue.toLocaleString();
+		return;
+	}
 
 	const tilt = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 6);
 	element.style.setProperty('--tilt', `${tilt.toFixed(1)}deg`);

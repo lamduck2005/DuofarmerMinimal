@@ -161,8 +161,54 @@
   gap: .3rem;
   cursor: pointer;
   outline: none;
+  position: relative;
+  overflow: hidden;
   transition: border-color .6s ease, box-shadow .6s ease, transform .3s ease, opacity .3s ease;
 }
+
+/* Effect: inner radial glow overlay — breathes when active */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s ease;
+}
+.streak-card::before { background: radial-gradient(circle, rgba(243,113,33,.18) 0%, transparent 68%); }
+.xp-card::before     { background: radial-gradient(circle, rgba(52,211,153,.18) 0%, transparent 68%); }
+.gem-card::before    { background: radial-gradient(circle, rgba(0,209,255,.18) 0%, transparent 68%); }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: .5; }
+  50%       { opacity: 1; }
+}
+.stat-card.active::before { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* Effect: shimmer sweep — plays on active card */
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    108deg,
+    transparent 20%,
+    rgba(255,255,255,.04) 38%,
+    rgba(255,255,255,.18) 48%,
+    rgba(255,255,255,.22) 50%,
+    rgba(255,255,255,.18) 52%,
+    rgba(255,255,255,.04) 62%,
+    transparent 80%
+  );
+  transform: translateX(-180%);
+  pointer-events: none;
+}
+@keyframes card-shimmer {
+  0%, 15%   { transform: translateX(-180%); }
+  70%, 100% { transform: translateX(280%); }
+}
+.stat-card.active::after { animation: card-shimmer 4.5s ease-in-out .4s infinite; }
 #container.running .stat-card {
   cursor: not-allowed;
   opacity: .55;
@@ -218,25 +264,13 @@
 .stat-icon { width: 1.5em; height: 1.5em; flex-shrink: 0; }
 
 
-/* wave 1: hạt nhỏ crisp, bay nhanh */
-@keyframes fw-wave1 {
-  0%   { opacity:1; box-shadow: 0 0 0 1px #f97316, 0 0 0 1px #34d399, 0 0 0 1px #38bdf8, 0 0 0 1px #facc15, 0 0 0 1px #c084fc, 0 0 0 1px #fb7185; }
-  60%  { opacity:.9; box-shadow: -18px -14px 0 1px #f97316, 14px -22px 0 1px #34d399, 24px 4px 0 1px #38bdf8, -6px 24px 0 1px #facc15, -24px 6px 0 1px #c084fc, 10px 22px 0 1px #fb7185; }
-  100% { opacity:0; box-shadow: -22px -18px 0 1px #f97316, 18px -26px 0 1px #34d399, 28px 5px 0 1px #38bdf8, -7px 28px 0 1px #facc15, -28px 8px 0 1px #c084fc, 12px 26px 0 1px #fb7185; }
-}
-/* wave 2: hạt nhỏ hơn, bay chậm hơn, delay nhẹ */
-@keyframes fw-wave2 {
-  0%   { opacity:1; box-shadow: 0 0 0 1px #00d1ff, 0 0 0 1px #a3e635, 0 0 0 1px #facc15, 0 0 0 1px #f97316, 0 0 0 1px #c084fc, 0 0 0 1px #34d399; }
-  70%  { opacity:.8; box-shadow: 20px -18px 0 1px #00d1ff, -16px -20px 0 1px #a3e635, 22px 12px 0 1px #facc15, -20px 14px 0 1px #f97316, 8px -24px 0 1px #c084fc, -8px 24px 0 1px #34d399; }
-  100% { opacity:0; box-shadow: 24px -22px 0 1px #00d1ff, -20px -24px 0 1px #a3e635, 26px 14px 0 1px #facc15, -24px 16px 0 1px #f97316, 10px -28px 0 1px #c084fc, -10px 28px 0 1px #34d399; }
-}
 
-@keyframes num-pop {
-  0%   { transform: scale(1)    rotate(0deg); }
-  25%  { transform: scale(1.35) rotate(var(--tilt)); }
-  70%  { transform: scale(1.1)  rotate(calc(var(--tilt) * -.25)); }
-  100% { transform: scale(1)    rotate(0deg); }
-}
+/* @keyframes num-pop {
+  0%   { transform: scale(1)    rotate(0deg);             filter: brightness(1); }
+  25%  { transform: scale(1.15) rotate(var(--tilt));      filter: brightness(1.6); }
+  70%  { transform: scale(1.05) rotate(calc(var(--tilt) * -.25)); filter: brightness(1.08); }
+  100% { transform: scale(1)    rotate(0deg);             filter: brightness(1); }
+} */
 
 .stat-value {
   font-size: 1.1em;
@@ -244,31 +278,17 @@
   line-height: 1;
   display: inline-block;
   position: relative;
+  transition: transform .4s ease;
 }
+
+/* Effect: scale up number when card is active */
+.stat-card.active .stat-value { transform: scale(1.08); }
+.stat-card.active .stat-value.counting { transform: none; }
 
 .stat-value.counting {
   animation: num-pop var(--anim-dur, 700ms) ease-out forwards;
 }
 
-.stat-value.counting::before,
-.stat-value.counting::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.stat-value.counting::before {
-  animation: fw-wave1 calc(var(--anim-dur, 700ms) * .75) ease-out forwards;
-}
-.stat-value.counting::after {
-  animation: fw-wave2 var(--anim-dur, 700ms) ease-out forwards;
-  animation-delay: 40ms;
-}
 
 
 /* Action Row */
@@ -496,6 +516,11 @@
 }
 
 /* Floating Button */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
+}
+
 #floating-btn {
   width: 42px;
   height: 42px;
@@ -509,9 +534,13 @@
   font-size: 1.25em;
   transition: transform .2s;
   overflow: hidden;
+  animation: float 3s ease-in-out infinite;
 }
 
-#floating-btn:hover { transform: scale(1.1); }
+#floating-btn:hover {
+  animation-play-state: paused;
+  transform: scale(1.1);
+}
 #floating-btn svg { width: 34px; height: 34px; }
 
 #floating-btn svg {
