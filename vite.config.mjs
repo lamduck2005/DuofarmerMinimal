@@ -28,6 +28,7 @@ export default defineConfig({
       },
       server: {
         open: false,
+        mountGmApi: true
       },
     }),
   ],

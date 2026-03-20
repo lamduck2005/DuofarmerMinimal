@@ -15,16 +15,12 @@ export function createApi(jwt, userInfo) {
     };
 
     async function sendRequest({ url, payload, method = 'PUT' }) {
-        try {
-            const res = await fetch(url, {
-                method,
-                headers,
-                body: payload ? JSON.stringify(payload) : undefined,
-            });
-            return res;
-        } catch (error) {
-            return error;
-        }
+        const res = await fetch(url, {
+            method,
+            headers,
+            body: payload ? JSON.stringify(payload) : undefined,
+        });
+        return res;
     }
 
     async function farmGemOnce() {

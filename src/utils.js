@@ -1,16 +1,3 @@
-export const log = (message) => {
-  if (typeof GM_log !== 'undefined') {
-    GM_log(message);
-  } else {
-    console.log('[DuoFarmer]', message);
-  }
-};
-
-export const logError = (error, context = "") => {
-  const message = error?.message || error?.toString() || "Unknown error";
-  const fullMessage = context ? `[${context}] ${message}` : message;
-  log(fullMessage);
-};
 
 export const delay = (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms));

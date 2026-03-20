@@ -1,7 +1,7 @@
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { getUserInfo, createApi } from './api.js';
-import { delay, toTimestamp, getJwtToken, decodeJwtToken, logError, log, daysBetween, getCurrentUnixTimestamp } from './utils.js';
+import { delay, toTimestamp, getJwtToken, decodeJwtToken, daysBetween, getCurrentUnixTimestamp } from './utils.js';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from './settings.js';
 
 let runtimeSettings = {
@@ -198,14 +198,6 @@ const setRunningState = (running) => {
 	}, 3000);
 };
 
-const disableAllControls = (notifyMessage = null) => {
-	const { startBtn, stopBtn, farmSelect } = getElements();
-	startBtn.disabled = true;
-	startBtn.className = 'disable-btn';
-	stopBtn.disabled = true;
-	if (farmSelect) farmSelect.classList.add('disabled');
-	if (notifyMessage) updateNotify(notifyMessage);
-};
 
 const setLoadingOverlay = (visible, message = 'DuoFarmer is loading...', isError = false) => {
 	const overlay = shadowRoot?.getElementById('loading-overlay');
@@ -400,10 +392,7 @@ const filterSelectByType = (type) => {
 	if (first) first.selected = true;
 };
 
-const updateNotify = (message) => {
-	const now = new Date().toLocaleTimeString();
-	log(`[${now}] ${message}`);
-};
+const updateNotify = (message) => GM_log(message);
 
 
 const animateNumber = (element, toValue, duration = 700) => {
@@ -480,7 +469,7 @@ const gemFarmingLoop = async () => {
 			updateFarmResult('gem', gemFarmed);
 			await delay(runtimeSettings.delayTime);
 		} catch (error) {
-			updateNotify(`Error ${error.status}! Please report in telegram group!`);
+			updateNotify(`Error ${error?.status || error?.message || error}! Please report in telegram group!`);
 			await delay(runtimeSettings.retryTime);
 		}
 	}
@@ -490,7 +479,7 @@ const xpFarmingLoop = async (config = {}) => {
 	while (isRunning) {
 		try {
 			const response = await apiService.farmSessionOnce(config);
-			if (response.status > 400) {
+			if (response.status >= 400) {
 				updateNotify(`Something went wrong! Pls try other farming methods.`);
 				await delay(runtimeSettings.retryTime);
 				continue;
@@ -500,7 +489,7 @@ const xpFarmingLoop = async (config = {}) => {
 			updateFarmResult('xp', xpFarmed);
 			await delay(runtimeSettings.delayTime);
 		} catch (error) {
-			updateNotify(`Error ${error.status}! Please report in telegram group!`);
+			updateNotify(`Error ${error?.status || error?.message || error}! Please report in telegram group!`);
 			await delay(runtimeSettings.retryTime);
 		}
 	}
@@ -547,20 +536,18 @@ const streakFarmingLoop = async (value = 'farm') => {
 		while (isRunning && repairTimestamp >= endTimestamp && repairedCount < missingStreaks) {
 			try {
 				const sessionRes = await apiService.farmSessionOnce({ startTime: repairTimestamp, endTime: repairTimestamp + SESSION_DURATION_SECONDS });
-				if (sessionRes) {
+				if (sessionRes.status < 400) {
 					repairTimestamp -= SECONDS_PER_DAY;
 					updateFarmResult('streak', 1);
 					repairedCount += 1;
 					await delay(runtimeSettings.delayTime);
 				} else {
-					updateNotify("Failed to repair streak session, I'm trying again...");
+					updateNotify(`Failed to repair streak session (${sessionRes.status}), retrying...`);
 					await delay(runtimeSettings.retryTime);
-					continue;
 				}
 			} catch (error) {
 				updateNotify(`Error in repairStreak: ${error?.message || error}`);
 				await delay(runtimeSettings.retryTime);
-				continue;
 			}
 		}
 
@@ -573,19 +560,17 @@ const streakFarmingLoop = async (value = 'farm') => {
 		while (isRunning) {
 			try {
 				const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + SESSION_DURATION_SECONDS });
-				if (sessionRes) {
+				if (sessionRes.status < 400) {
 					currentTimestamp -= SECONDS_PER_DAY;
 					updateFarmResult('streak', 1);
 					await delay(runtimeSettings.delayTime);
 				} else {
-					updateNotify("Failed to farm streak session, I'm trying again...");
+					updateNotify(`Failed to farm streak session (${sessionRes.status}), retrying...`);
 					await delay(runtimeSettings.retryTime);
-					continue;
 				}
 			} catch (error) {
 				updateNotify(`Error in farmStreak: ${error?.message || error}`);
 				await delay(runtimeSettings.retryTime);
-				continue;
 			}
 		}
 	}
@@ -622,7 +607,7 @@ const loadSavedSettings = () => {
 	}
 	if (settings.keepScreenOn && 'wakeLock' in navigator) {
 		navigator.wakeLock.request('screen').then(() => {
-			log('Screen wake lock active');
+			GM_log('Screen wake lock active');
 		});
 	}
 };
@@ -694,7 +679,7 @@ const applyAutoOpenMenu = () => {
 		setLoadingOverlay(false);
 		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.');
 	} catch (err) {
-		logError(err, 'Duofarmer init error!');
+		GM_log(`Duofarmer init error: ${err?.message || err}`);
 		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);
 	}
 })();
