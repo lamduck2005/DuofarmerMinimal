@@ -305,7 +305,7 @@ const addEventStartBtn = () => {
 		if (runtimeSettings.autoStopTime > 0) {
 			autoStopTimerId = setTimeout(() => {
 				alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
-				updateNotify(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+				GM_log(`Auto-stopped after ${runtimeSettings.autoStopTime} minutes.`);
 				setRunningState(false);
 			}, runtimeSettings.autoStopTime * 60 * 1000);
 		}
@@ -392,7 +392,6 @@ const filterSelectByType = (type) => {
 	if (first) first.selected = true;
 };
 
-const updateNotify = (message) => GM_log(message);
 
 
 const animateNumber = (element, toValue, duration = 700) => {
@@ -447,15 +446,12 @@ const updateFarmResult = (type, farmedAmount) => {
 	switch (type) {
 		case 'gem':
 			userInfo = { ...userInfo, gems: userInfo.gems + farmedAmount };
-			updateNotify(`You got ${farmedAmount} gem!!!`);
 			break;
 		case 'xp':
 			userInfo = { ...userInfo, totalXp: userInfo.totalXp + farmedAmount };
-			updateNotify(`You got ${farmedAmount} XP!!!`);
 			break;
 		case 'streak':
 			userInfo = { ...userInfo, streak: userInfo.streak + farmedAmount };
-			updateNotify(`You got ${farmedAmount} streak! (maybe some xp too, idk)`);
 			break;
 	}
 	updateUserInfo();
@@ -469,7 +465,7 @@ const gemFarmingLoop = async () => {
 			updateFarmResult('gem', gemFarmed);
 			await delay(runtimeSettings.delayTime);
 		} catch (error) {
-			updateNotify(`Error ${error?.status || error?.message || error}! Please report in telegram group!`);
+			GM_log(`[gem] ${error?.status || error?.message || error}`);
 			await delay(runtimeSettings.retryTime);
 		}
 	}
@@ -480,7 +476,7 @@ const xpFarmingLoop = async (config = {}) => {
 		try {
 			const response = await apiService.farmSessionOnce(config);
 			if (response.status >= 400) {
-				updateNotify(`Something went wrong! Pls try other farming methods.`);
+				GM_log(`[xp] HTTP ${response.status}, retrying...`);
 				await delay(runtimeSettings.retryTime);
 				continue;
 			}
@@ -489,7 +485,7 @@ const xpFarmingLoop = async (config = {}) => {
 			updateFarmResult('xp', xpFarmed);
 			await delay(runtimeSettings.delayTime);
 		} catch (error) {
-			updateNotify(`Error ${error?.status || error?.message || error}! Please report in telegram group!`);
+			GM_log(`[xp] ${error?.status || error?.message || error}`);
 			await delay(runtimeSettings.retryTime);
 		}
 	}
@@ -512,8 +508,7 @@ const streakFarmingLoop = async (value = 'farm') => {
 		const maxPossibleStreak = daysSinceCreation + 1;
 
 		if (currentStreak >= maxPossibleStreak) {
-			const message = `Current streak (${currentStreak}) is greater than or equal to maximum possible streak (${maxPossibleStreak}). No repair needed.`;
-			updateNotify(message);
+			GM_log(`[streak] No repair needed. Current: ${currentStreak}, max possible: ${maxPossibleStreak}`);
 			setRunningState(false);
 			return;
 		}
@@ -522,13 +517,12 @@ const streakFarmingLoop = async (value = 'farm') => {
 		const missingStreaks = maxPossibleStreak - currentStreak;
 
 		if (missingStreaks <= 0) {
-			const message = 'No missing streaks to repair.';
-			updateNotify(message);
+			GM_log('[streak] No missing streaks to repair.');
 			setRunningState(false);
 			return;
 		}
 
-		updateNotify(`Repairing ${missingStreaks} missing streaks...`);
+		GM_log(`[streak] Repairing ${missingStreaks} missing streaks...`);
 
 		let repairTimestamp = currentTimestamp;
 		let repairedCount = 0;
@@ -542,18 +536,17 @@ const streakFarmingLoop = async (value = 'farm') => {
 					repairedCount += 1;
 					await delay(runtimeSettings.delayTime);
 				} else {
-					updateNotify(`Failed to repair streak session (${sessionRes.status}), retrying...`);
+					GM_log(`[streak] repair HTTP ${sessionRes.status}, retrying...`);
 					await delay(runtimeSettings.retryTime);
 				}
 			} catch (error) {
-				updateNotify(`Error in repairStreak: ${error?.message || error}`);
+				GM_log(`[streak] repair error: ${error?.message || error}`);
 				await delay(runtimeSettings.retryTime);
 			}
 		}
 
 		if (repairedCount >= missingStreaks || repairTimestamp < endTimestamp) {
-			const message = `Streak repair completed. Repaired ${repairedCount} day(s).`;
-			updateNotify(message);
+			GM_log(`[streak] Repair done. Repaired ${repairedCount} day(s).`);
 			setRunningState(false);
 		}
 	} else {
@@ -565,11 +558,11 @@ const streakFarmingLoop = async (value = 'farm') => {
 					updateFarmResult('streak', 1);
 					await delay(runtimeSettings.delayTime);
 				} else {
-					updateNotify(`Failed to farm streak session (${sessionRes.status}), retrying...`);
+					GM_log(`[streak] farm HTTP ${sessionRes.status}, retrying...`);
 					await delay(runtimeSettings.retryTime);
 				}
 			} catch (error) {
-				updateNotify(`Error in farmStreak: ${error?.message || error}`);
+				GM_log(`[streak] farm error: ${error?.message || error}`);
 				await delay(runtimeSettings.retryTime);
 			}
 		}
@@ -677,7 +670,7 @@ const applyAutoOpenMenu = () => {
 		addEventListeners();
 		loadSavedSettings();
 		setLoadingOverlay(false);
-		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.');
+		GM_log('[DuoFarmer] ready');
 	} catch (err) {
 		GM_log(`Duofarmer init error: ${err?.message || err}`);
 		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);
