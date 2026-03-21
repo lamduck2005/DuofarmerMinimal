@@ -34,6 +34,20 @@ let settings = null;
 let farmOptions = [];
 
 let autoStopTimerId = null;
+let farmAbortController = null;
+
+const abortableDelay = (ms) => {
+	const signal = farmAbortController?.signal;
+	if (!signal) return delay(ms);
+	return new Promise((resolve, reject) => {
+		if (signal.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+		const id = setTimeout(resolve, ms);
+		signal.addEventListener('abort', () => {
+			clearTimeout(id);
+			reject(new DOMException('Aborted', 'AbortError'));
+		}, { once: true });
+	});
+};
 
 const formatHeaders = (jwtToken) => ({
 	'Content-Type': 'application/json',
@@ -169,33 +183,26 @@ const addSettingsEventListeners = () => {
 
 const setRunningState = (running) => {
 	isRunning = running;
-	const { startBtn, stopBtn, select, container } = getElements();
-	container.classList.toggle('running', running);
 	if (running) {
-		startBtn.hidden = true;
-		stopBtn.hidden = false;
-		stopBtn.disabled = true;
-		stopBtn.className = 'disable-btn';
-		select.disabled = true;
+		farmAbortController = new AbortController();
 	} else {
-		stopBtn.hidden = true;
-		startBtn.hidden = false;
-		startBtn.disabled = true;
-		startBtn.className = 'disable-btn';
-		select.disabled = false;
+		farmAbortController?.abort();
 		if (autoStopTimerId) {
 			clearTimeout(autoStopTimerId);
 			autoStopTimerId = null;
 		}
 	}
-
-	setTimeout(() => {
-		const { startBtn: btn, stopBtn: stop } = getElements();
-		btn.className = '';
-		btn.disabled = false;
-		stop.className = '';
-		stop.disabled = false;
-	}, 3000);
+	const { startBtn, stopBtn, select, container } = getElements();
+	container.classList.toggle('running', running);
+	if (running) {
+		startBtn.hidden = true;
+		stopBtn.hidden = false;
+		select.disabled = true;
+	} else {
+		stopBtn.hidden = true;
+		startBtn.hidden = false;
+		select.disabled = false;
+	}
 };
 
 
@@ -349,10 +356,31 @@ const addEventStatCards = () => {
 	});
 };
 
+const showToast = (msg, type = 'info', duration = 3000) => {
+	const toast = shadowRoot.getElementById('toast');
+	const toastMsg = shadowRoot.getElementById('toast-msg');
+	const permanent = duration === 0;
+	toast.style.setProperty('--duration', `${duration}ms`);
+	toast.className = `show ${type}${permanent ? ' permanent' : ''}`;
+	toastMsg.textContent = msg;
+};
+
+const addEventToast = () => {
+	const toast = shadowRoot.getElementById('toast');
+	toast.addEventListener('animationend', (e) => {
+		if (e.animationName === 'toast-life') toast.className = '';
+	});
+	shadowRoot.getElementById('toast-close').addEventListener('click', () => {
+		toast.classList.add('hiding');
+		toast.addEventListener('animationend', () => { toast.className = ''; }, { once: true });
+	});
+};
+
 const addEventListeners = () => {
 	addEventStartBtn();
 	addEventStopBtn();
 	addEventStatCards();
+	addEventToast();
 	const { container } = getElements();
 	addEventSettings(container);
 	addSettingsEventListeners();
@@ -463,10 +491,11 @@ const gemFarmingLoop = async () => {
 		try {
 			await apiService.farmGemOnce();
 			updateFarmResult('gem', gemFarmed);
-			await delay(runtimeSettings.delayTime);
+			await abortableDelay(runtimeSettings.delayTime);
 		} catch (error) {
+			if (error.name === 'AbortError') return;
 			GM_log(`[gem] ${error?.status || error?.message || error}`);
-			await delay(runtimeSettings.retryTime);
+			try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 		}
 	}
 };
@@ -477,16 +506,17 @@ const xpFarmingLoop = async (config = {}) => {
 			const response = await apiService.farmSessionOnce(config);
 			if (response.status >= 400) {
 				GM_log(`[xp] HTTP ${response.status}, retrying...`);
-				await delay(runtimeSettings.retryTime);
+				await abortableDelay(runtimeSettings.retryTime);
 				continue;
 			}
 			const responseData = await response.json();
 			const xpFarmed = responseData?.awardedXp || responseData?.xpGain || 0;
 			updateFarmResult('xp', xpFarmed);
-			await delay(runtimeSettings.delayTime);
+			await abortableDelay(runtimeSettings.delayTime);
 		} catch (error) {
+			if (error.name === 'AbortError') return;
 			GM_log(`[xp] ${error?.status || error?.message || error}`);
-			await delay(runtimeSettings.retryTime);
+			try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 		}
 	}
 };
@@ -534,14 +564,15 @@ const streakFarmingLoop = async (value = 'farm') => {
 					repairTimestamp -= SECONDS_PER_DAY;
 					updateFarmResult('streak', 1);
 					repairedCount += 1;
-					await delay(runtimeSettings.delayTime);
+					await abortableDelay(runtimeSettings.delayTime);
 				} else {
 					GM_log(`[streak] repair HTTP ${sessionRes.status}, retrying...`);
-					await delay(runtimeSettings.retryTime);
+					await abortableDelay(runtimeSettings.retryTime);
 				}
 			} catch (error) {
+				if (error.name === 'AbortError') return;
 				GM_log(`[streak] repair error: ${error?.message || error}`);
-				await delay(runtimeSettings.retryTime);
+				try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 			}
 		}
 
@@ -556,30 +587,31 @@ const streakFarmingLoop = async (value = 'farm') => {
 				if (sessionRes.status < 400) {
 					currentTimestamp -= SECONDS_PER_DAY;
 					updateFarmResult('streak', 1);
-					await delay(runtimeSettings.delayTime);
+					await abortableDelay(runtimeSettings.delayTime);
 				} else {
 					GM_log(`[streak] farm HTTP ${sessionRes.status}, retrying...`);
-					await delay(runtimeSettings.retryTime);
+					await abortableDelay(runtimeSettings.retryTime);
 				}
 			} catch (error) {
+				if (error.name === 'AbortError') return;
 				GM_log(`[streak] farm error: ${error?.message || error}`);
-				await delay(runtimeSettings.retryTime);
+				try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 			}
 		}
 	}
 };
 
 const farmSelectedOption = async (option) => {
-	const { type, value, amount, config } = option;
+	const { type, value, config } = option;
 	switch (type) {
 		case 'gem':
-			gemFarmingLoop();
+			await gemFarmingLoop();
 			break;
 		case 'xp':
-			xpFarmingLoop(config);
+			await xpFarmingLoop(config);
 			break;
 		case 'streak':
-			streakFarmingLoop(value);
+			await streakFarmingLoop(value);
 			break;
 	}
 };
@@ -626,7 +658,7 @@ const initVariables = async () => {
 	sub = decodedJwt.sub;
 	userInfo = await getUserInfo(sub, headers);
 
-	apiService = createApi(jwt, userInfo);
+	apiService = createApi(jwt, userInfo, () => farmAbortController?.signal);
 
 	skillId = extractSkillId(userInfo.currentCourse || {});
 	farmOptions = [
@@ -671,6 +703,7 @@ const applyAutoOpenMenu = () => {
 		loadSavedSettings();
 		setLoadingOverlay(false);
 		GM_log('[DuoFarmer] ready');
+		showToast("Something went wrong. ","success",0)
 	} catch (err) {
 		GM_log(`Duofarmer init error: ${err?.message || err}`);
 		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);

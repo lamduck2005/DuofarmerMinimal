@@ -6,7 +6,7 @@ export async function getUserInfo(sub, headers) {
     return await response.json();
 }
 
-export function createApi(jwt, userInfo) {
+export function createApi(jwt, userInfo, getSignal) {
     const sub = userInfo.id;
     const headers = {
         'Content-Type': 'application/json',
@@ -19,6 +19,7 @@ export function createApi(jwt, userInfo) {
             method,
             headers,
             body: payload ? JSON.stringify(payload) : undefined,
+            signal: getSignal?.(),
         });
         return res;
     }
