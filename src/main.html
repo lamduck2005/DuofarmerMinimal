@@ -1,65 +1,151 @@
-<div id="overlay"></div>
+<!-- SVG Icons Sprite -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="ic-settings" viewBox="0 -960 960 960">
+    <path d="M433-80q-27 0-46.5-18T363-142l-9-66q-13-5-24.5-12T307-235l-62 26q-25 11-50 2t-39-32l-47-82q-14-23-8-49t27-43l53-40q-1-7-1-13.5v-27q0-6.5 1-13.5l-53-40q-21-17-27-43t8-49l47-82q14-23 39-32t50 2l62 26q11-8 23-15t24-12l9-66q4-26 23.5-44t46.5-18h94q27 0 46.5 18t23.5 44l9 66q13 5 24.5 12t22.5 15l62-26q25-11 50-2t39 32l47 82q14 23 8 49t-27 43l-53 40q1 7 1 13.5v27q0 6.5-2 13.5l53 40q21 17 27 43t-8 49l-48 82q-14 23-39 32t-50-2l-60-26q-11 8-23 15t-24 12l-9 66q-4 26-23.5 44T527-80h-94Zm7-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/>
+  </symbol>
+  <symbol id="ic-fire" viewBox="0 -960 960 960">
+    <path d="M160-400q0-113 67-217t184-182q22-15 45.5-1.5T480-760v52q0 34 23.5 57t57.5 23q17 0 32.5-7.5T621-657q8-10 20.5-12.5T665-664q63 45 99 115t36 149q0 88-43 160.5T644-125q17-24 26.5-52.5T680-238q0-40-15-75.5T622-377L480-516 339-377q-29 29-44 64t-15 75q0 32 9.5 60.5T316-125q-70-42-113-114.5T160-400Zm320-4 85 83q17 17 26 38t9 45q0 49-35 83.5T480-120q-50 0-85-34.5T360-238q0-23 9-44.5t26-38.5l85-83Z"/>
+  </symbol>
+  <symbol id="ic-star" viewBox="0 -960 960 960">
+    <path d="M480-269 314-169q-11 7-23 6t-21-8q-9-7-14-17.5t-2-23.5l44-189-147-127q-10-9-12.5-20.5T140-571q4-11 12-18t22-9l194-17 75-178q5-12 15.5-18t21.5-6q11 0 21.5 6t15.5 18l75 178 194 17q14 2 22 9t12 18q4 11 1.5 22.5T809-528L662-401l44 189q3 13-2 23.5T690-171q-9 7-21 8t-23-6L480-269Z"/>
+  </symbol>
+  <symbol id="ic-diamond" viewBox="0 -960 960 960">
+    <path d="M368-630h224L486-840h-12L368-630Zm82 474v-414H105l345 414Zm60 0 345-414H510v414Zm148-474h207l-83-166q-11-20-29.5-32T711-840H554l104 210Zm-563 0h207l104-210H249q-23 0-41.5 12T178-796L95-630Z"/>
+  </symbol>
+  <symbol id="ic-play" viewBox="0 -960 960 960">
+    <path d="m426-330 195-125q14-9 14-25t-14-25L426-630q-15-10-30.5-1.5T380-605v250q0 18 15.5 26.5T426-330Zm54 250q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+  </symbol>
+  <symbol id="ic-stop" viewBox="0 -960 960 960">
+    <path d="M320-320v-320h320v320H320Zm160 240q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+  </symbol>
+  <symbol id="ic-close" viewBox="0 -960 960 960">
+    <path d="M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z"/>
+  </symbol>
+  <symbol id="ic-avatar" viewBox="0 0 24 24">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </symbol>
+  <symbol id="ic-chevron-down" viewBox="0 0 24 24">
+    <path d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z"/>
+  </symbol>
+  <symbol id="ic-info" viewBox="0 -960 960 960">
+    <path d="M508.5-291.5Q520-303 520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280q17 0 28.5-11.5Zm0-320Q520-623 520-640t-11.5-28.5Q497-680 480-680t-28.5 11.5Q440-657 440-640t11.5 28.5Q463-600 480-600t28.5-11.5ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/>
+  </symbol>
+  <symbol id="ic-duopixel" viewBox="0 -1 60 60" shape-rendering="crispEdges">
+    <path stroke="#154237" d="M22 17h5M33 17h5M21 18h1M27 18h2M31 18h2M38 18h1M20 19h1M29 19h2M39 19h1M19 20h1M40 20h1M19 21h1M40 21h1M19 22h1M40 22h1M19 23h1M40 23h1M19 24h1M40 24h1M19 25h1M40 25h1M19 26h1M40 26h1M19 27h1M40 27h1M19 28h1M40 28h1M19 29h1M40 29h1M19 30h1M40 30h1M18 31h1M41 31h1M18 32h1M41 32h1M17 33h1M42 33h1M17 34h1M42 34h1M16 35h1M43 35h1M16 36h1M43 36h1M15 37h1M44 37h1M15 38h1M44 38h1M15 39h1M20 39h2M38 39h2M44 39h1M16 40h4M22 40h1M37 40h1M40 40h4M23 41h2M35 41h2M25 42h10" />
+    <path stroke="#6ea84a" d="M22 18h5M33 18h5M21 19h8M31 19h8M20 20h3M24 20h1M26 20h8M35 20h1M37 20h3M20 21h3M27 21h6M37 21h3M20 22h2M28 22h4M38 22h2M20 23h1M29 23h2M39 23h1M20 24h1M39 24h1M20 25h1M39 25h1M20 26h1M39 26h1M20 27h1M39 27h1M20 28h1M39 28h1M20 29h1M39 29h1M20 30h1M39 30h1M20 31h1M39 31h1M20 32h2M28 32h4M38 32h2M20 33h3M27 33h6M37 33h3M21 34h18M21 35h4M29 35h2M35 35h4M22 36h16M22 37h6M32 37h6M23 38h14M25 39h10M27 40h1M29 40h1M31 40h2" />
+    <path stroke="#a3c255" d="M23 20h1M25 20h1M34 20h1M36 20h1M23 21h4M33 21h4M22 22h6M32 22h6M21 23h8M31 23h8M21 24h18M21 25h2M27 25h6M37 25h2M21 26h1M28 26h4M38 26h1M21 27h1M28 27h4M38 27h1M21 28h1M28 28h4M38 28h1M21 29h1M28 29h1M31 29h1M38 29h1M21 30h1M38 30h1M21 31h2M27 31h2M31 31h2M37 31h2M22 32h6M32 32h6M23 33h4M33 33h4M25 35h4M31 35h4M28 37h4" />
+    <path stroke="#f1f4f7" d="M23 25h4M33 25h4M22 26h2M27 26h1M32 26h2M37 26h1M22 27h1M26 27h2M32 27h1M36 27h2M22 28h1M27 28h1M32 28h1M37 28h1M22 29h1M27 29h1M32 29h1M37 29h1" />
+    <path stroke="#0d2829" d="M24 26h3M34 26h3M23 27h3M33 27h3M23 28h4M33 28h4M23 29h4M33 29h4M24 30h2M34 30h2" />
+    <path stroke="#f5cb53" d="M29 29h2M28 30h4M23 43h2M35 43h2" />
+    <path stroke="#d0dde4" d="M22 30h2M26 30h2M32 30h2M36 30h2M23 31h4M33 31h4M20 40h2M39 40h1M15 41h2M43 41h2M14 42h1M45 42h1M13 43h1M46 43h1M14 44h1M45 44h1M15 45h2M43 45h2M17 46h5M39 46h4M22 47h17" />
+    <path stroke="#235c44" d="M19 31h1M40 31h1M19 32h1M40 32h1M18 33h2M40 33h2M19 34h1M40 34h1M17 35h1M19 35h1M40 35h1M42 35h1M19 36h1M40 36h1M16 37h1M20 37h1M39 37h1M43 37h1M16 38h1M20 38h1M39 38h1M43 38h1M16 39h4M40 39h4" />
+    <path stroke="#e68d3e" d="M29 31h2" />
+    <path stroke="#317545" d="M18 34h1M41 34h1M18 35h1M41 35h1M17 36h2M20 36h1M39 36h1M41 36h2M17 37h3M40 37h3M17 38h3M21 38h1M38 38h1M40 38h3M22 39h1M37 39h1M23 40h1M36 40h1M25 41h1M34 41h1" />
+    <path stroke="#428f42" d="M20 34h1M39 34h1M20 35h1M39 35h1M21 36h1M38 36h1M21 37h1M38 37h1M22 38h1M37 38h1M23 39h2M35 39h2M24 40h3M28 40h1M30 40h1M33 40h3M26 41h8" />
+    <path stroke="#b4c5d1" d="M38 40h1M17 41h6M37 41h6M15 42h6M39 42h6M14 43h7M27 43h6M39 43h7M15 44h6M27 44h6M39 44h6M17 45h26M22 46h17" />
+    <path stroke="#d16630" d="M21 42h4M35 42h4M21 43h1M26 43h1M33 43h1M38 43h1M21 44h6M33 44h6" />
+    <path stroke="#edac4a" d="M22 43h1M25 43h1M34 43h1M37 43h1" />
+  </symbol>
+</svg>
+
+<div id="ui-wrapper">
+<div id="floating-btn">
+  <svg shape-rendering="crispEdges"><use href="#ic-duopixel"/></svg>
+</div>
 <div id="container">
-  <div id="header">
-    <div id="header-left">
-      <img src="https://img.icons8.com/?size=48&id=mPfeGOwngGmN&format=png&color=000000">
-      <span class="label">Duofarmer</span>
+  <div id="loading-overlay">
+    <div class="loading-ring">
+      <svg class="loading-duopixel" shape-rendering="crispEdges"><use href="#ic-duopixel"/></svg>
     </div>
-    <button id="settings-btn">⚙️</button>
+    <span class="loading-text">DuoFarmer is loading...</span>
   </div>
   <div id="body">
-    <table id="table-main" class="table">
-      <thead>
-        <tr>
-          <th>Username</th>
-          <th>From</th>
-          <th>Learning</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td id="username">duofarmer</td>
-          <td id="from">any</td>
-          <td id="learn">any</td>
-        </tr>
-      </tbody>
-    </table>
-    <table id="table-progress" class="table">
-      <thead>
-        <tr>
-          <th>Streak</th>
-          <th>Gem</th>
-          <th>XP</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td id="streak">0</td>
-          <td id="gem">0</td>
-          <td id="xp">0</td>
-        </tr>
-      </tbody>
-    </table>
-    <div id="action-row">
-      <select id="select-option">
-        <!-- <option value="option1">Option 1</option> -->
-        <!-- <option value="option2">Option 2</option> -->
-      </select>
-      <button id="start-btn">Start</button>
-      <button id="stop-btn" hidden>Stop</button>
+    <div id="table-progress" class="table stats-grid">
+      <div class="stat-card streak-card">
+        <div class="stat-label">
+          <svg class="stat-icon" fill="currentColor" style="color:#f37121"><use href="#ic-fire"/></svg>
+          <span>Streak</span>
+        </div>
+        <div id="streak" class="stat-value">0</div>
+      </div>
+      <div class="stat-card xp-card">
+        <div class="stat-label">
+          <svg class="stat-icon" fill="currentColor" style="color:#34d399"><use href="#ic-star"/></svg>
+          <span>Total XP</span>
+        </div>
+        <div id="xp" class="stat-value">0</div>
+      </div>
+      <div class="stat-card gem-card">
+        <div class="stat-label">
+          <svg class="stat-icon" fill="currentColor" style="color:#00d1ff"><use href="#ic-diamond"/></svg>
+          <span>Gems</span>
+        </div>
+        <div id="gem" class="stat-value">0</div>
+      </div>
     </div>
-    <div id="notify">Getting user info, please wait until it's done.<br /> If it takes too long, please refresh the
-      page.</div>
+
+    <div id="action-row">
+      <div class="farming-label">
+        <span class="section-title">Farming Mode</span>
+        <button id="info-btn">
+          <svg width="16" height="16" fill="currentColor"><use href="#ic-info"/></svg>
+        </button>
+      </div>
+      <div class="controls-row">
+        <div class="select-wrap">
+          <select id="select-option"></select>
+          <svg class="chevron" fill="currentColor"><use href="#ic-chevron-down"/></svg>
+        </div>
+        <button id="start-btn">
+          <svg width="20" height="20" fill="currentColor"><use href="#ic-play"/></svg>
+          <span>Start</span>
+        </button>
+        <button id="stop-btn" hidden>
+          <span class="spinner"></span>
+          <span>Stop</span>
+        </button>
+      </div>
+    </div>
+
   </div>
+
   <div id="footer">
-    <span class="label">If info is wrong, reload the page!</span>
+    <div class="footer-left">
+      <div class="avatar-wrap">
+        <div class="avatar-ring">
+          <svg class="avatar-icon" fill="currentColor"><use href="#ic-avatar"/></svg>
+          <img id="avatar-img" class="avatar-img" src="" alt="avatar" onerror="this.style.display='none'"/>
+        </div>
+        <img id="avatar-flag" class="avatar-flag" src="https://flagcdn.com/vn.svg" alt="flag"/>
+      </div>
+      <div class="footer-user">
+        <span class="footer-welcome">Welcome to DuoFarmer!</span>
+        <span id="username" class="label">duofarmer</span>
+      </div>
+    </div>
+    <button id="settings-btn">
+      <svg width="26" height="26" fill="currentColor"><use href="#ic-settings"/></svg>
+    </button>
   </div>
 </div>
+
+<!-- Toast -->
+<div id="toast" role="alert">
+  <svg class="toast-icon" width="16" height="16" fill="currentColor"><use href="#ic-info"/></svg>
+  <span id="toast-msg"></span>
+  <button id="toast-close">
+    <svg width="14" height="14" fill="currentColor"><use href="#ic-close"/></svg>
+  </button>
+</div>
+
+<!-- Settings Modal -->
 <div id="settings-container">
   <div id="settings-menu" class="modal-content">
     <div class="modal-header">
       <span class="label">Settings</span>
-      <button id="settings-close" class="modal-close">✕</button>
+      <button id="settings-close" class="modal-close">
+        <svg width="20" height="20" fill="currentColor"><use href="#ic-close"/></svg>
+      </button>
     </div>
     <div class="modal-body">
       <div class="settings-group">
@@ -73,10 +159,12 @@
           <input type="checkbox" id="auto-start">
         </div>
         <div class="setting-item">
+          <span>Auto keep streak on load</span>
+          <input type="checkbox" id="auto-keep-streak">
+        </div>
+        <div class="setting-item">
           <span>Default farming option</span>
-          <select id="default-option">
-            <!-- option auto -->
-          </select>
+          <select id="default-option"></select>
         </div>
         <div class="setting-item">
           <span>Hide username</span>
@@ -90,21 +178,20 @@
       <div class="settings-group">
         <h3>Performance</h3>
         <div class="setting-item">
-          <span>Delay time (100ms - 10000ms):
-            <br>
-            <i class="muted">(Lower delay = faster = high limit rate ban)</i>
-          </span>
-          <input type="number" id="delay-time" min="100" max="10000" value="500">
-        </div>
-        <div class="setting-item">
-          <span>Retry time (100ms - 10000ms):
-            <br>
-          </span>
-          <input type="number" id="retry-time" min="100" max="10000" value="1000">
-        </div>
-        <div class="setting-item">
-          <span>Auto stop after (min) (set 0 for unlimited)</span>
+          <span>Auto stop after (min) (0 = unlimited)</span>
           <input type="number" id="auto-stop-time" min="0" max="60" value="0">
+        </div>
+        <div class="setting-item">
+          <span>Delay between requests (ms)</span>
+          <input type="number" id="delay-time" min="0" value="500">
+        </div>
+        <div class="setting-item">
+          <span>Retry delay on error (ms)</span>
+          <input type="number" id="retry-time" min="0" value="1000">
+        </div>
+        <div class="setting-item">
+          <span>Enable farm animation</span>
+          <input type="checkbox" id="farm-animation">
         </div>
       </div>
       <div class="settings-group">
@@ -114,18 +201,6 @@
           <button id="get-jwt-token" class="setting-btn">Get Token</button>
         </div>
         <div class="setting-item">
-          <span>Set account to public</span>
-          <button id="set-account-public" class="setting-btn">Set Public</button>
-        </div>
-        <div class="setting-item">
-          <span>Set account to private</span>
-          <button id="set-account-private" class="setting-btn">Set Private</button>
-        </div>
-        <div class="setting-item">
-          <span>Quick logout</span>
-          <button id="quick-logout" class="setting-btn">Logout</button>
-        </div>
-        <div class="setting-item">
           <span>Reset setting</span>
           <button id="reset-setting" class="setting-btn">Reset</button>
         </div>
@@ -133,52 +208,10 @@
       <div class="settings-group">
         <h3>Others</h3>
         <div class="setting-item">
-          <span>Blank page (best performance)</span>
-          <a href="https://www.duolingo.com/errors/0">Here</a>
-        </div>
-        <div class="setting-item">
-          <span>Duolingo homepage</span>
-          <a href="https://www.duolingo.com/">Here</a>
-        </div>
-        <div class="setting-item">
-          <span>Greasyfork</span>
-          <a href="https://greasyfork.org/vi/scripts/528621-duofarmer" target="_blank">Here</a>
-        </div>
-        <div class="setting-item">
           <span>Telegram</span>
           <a href="https://t.me/duofarmer" target="_blank">Here</a>
         </div>
-        <div class="setting-item">
-          <span>Duofarmer Homepage</span>
-          <a href="https://duo-farmer.vercel.app" target="_blank">Here</a>
-        </div>
-        <div class="setting-item">
-          <span>Recommended Scripts (Free Max/ Super/ Unlimited subscriptions)</span>
-          <a href="https://greasyfork.org/en/scripts?set=593926" target="_blank">Here</a>
-        </div>
       </div>
-
-      <div class="settings-group">
-        <h3>Donate me (please 😭)</h3>
-        <div class="setting-item">
-          <span>Donate via PayPal</span>
-          <a href="https://duo-farmer.vercel.app/donate/paypal" target="_blank">Here</a>
-        </div>
-        <div class="setting-item">
-          <span>Donate via Momo ( Vietnam )</span>
-          <a>Pls text me in telegram 😘</a>
-        </div>
-      </div>
-
-      <div class="settings-group">
-        <h3>All userinfo (json)</h3>
-        <div class="setting-item">
-          <code id="user-info-display">
-              Loading...
-            </code>
-        </div>
-      </div>
-
     </div>
     <div class="modal-footer">
       <span></span>
@@ -186,4 +219,5 @@
     </div>
   </div>
 </div>
-<div id="floating-btn">🐸</div>
+
+</div>

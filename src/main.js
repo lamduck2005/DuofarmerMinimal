@@ -1,8 +1,8 @@
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
-import { ApiService } from './service/api.js';
-import { delay, toTimestamp, getJwtToken, decodeJwtToken, formatHeaders, logError, log, extractSkillId, daysBetween, getCurrentUnixTimestamp } from './utils/utils.js';
-import { SettingsManager } from './settings/settings-manager.js';
+import { getUserInfo, createApi } from './api.js';
+import { delay, toTimestamp, getJwtToken, decodeJwtToken, daysBetween, getCurrentUnixTimestamp, getTodayDateStr } from './utils.js';
+import { loadSettings, saveSettings, DEFAULT_SETTINGS } from './settings.js';
 
 let runtimeSettings = {
 	delayTime: 500,
@@ -10,24 +10,65 @@ let runtimeSettings = {
 	autoStopTime: 0
 };
 
-let jwt = null
-let defaultHeaders = null
-let userInfo = null
-let sub = null
-let skillId = null
+let jwt = null;
+let userInfo = null;
+let sub = null;
+let skillId = null;
+
+const LANG_TO_COUNTRY = {
+	'en': 'us', 'vi': 'vn', 'ja': 'jp', 'ko': 'kr', 'zh': 'cn', 'zs': 'cn',
+	'ar': 'sa', 'he': 'il', 'hi': 'in', 'bn': 'bd', 'ta': 'in', 'te': 'in',
+	'da': 'dk', 'nb': 'no', 'sv': 'se', 'el': 'gr', 'cs': 'cz', 'uk': 'ua',
+	'cy': 'gb', 'ga': 'ie', 'ca': 'es', 'sw': 'ke', 'tl': 'ph',
+	'haw': 'us', 'nah': 'mx', 'nv': 'us', 'zu': 'za', 'yi': 'il',
+	'eo': null, 'la': null, 'tlh': null, 'hv': null,
+};
 
 let isRunning = false;
 
 let shadowRoot = null;
 
 let apiService = null;
-let settingsManager = null;
+let settings = null;
 
-let farmOptions = []; // Will be set in initVariables
+let farmOptions = [];
 
 let autoStopTimerId = null;
+let farmAbortController = null;
 
+const abortableDelay = (ms) => {
+	const signal = farmAbortController?.signal;
+	if (!signal) return delay(ms);
+	return new Promise((resolve, reject) => {
+		if (signal.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+		const id = setTimeout(resolve, ms);
+		signal.addEventListener('abort', () => {
+			clearTimeout(id);
+			reject(new DOMException('Aborted', 'AbortError'));
+		}, { once: true });
+	});
+};
 
+const formatHeaders = (jwtToken) => ({
+	'Content-Type': 'application/json',
+	Authorization: `Bearer ${jwtToken}`,
+	'User-Agent': navigator.userAgent,
+});
+
+const extractSkillId = (currentCourse) => {
+	const sections = currentCourse?.pathSectioned || [];
+	for (const section of sections) {
+		const units = section.units || [];
+		for (const unit of units) {
+			const levels = unit.levels || [];
+			for (const level of levels) {
+				const skillId = level.pathLevelMetadata?.skillId || level.pathLevelClientData?.skillId;
+				if (skillId) return skillId;
+			}
+		}
+	}
+	return null;
+};
 
 const getElements = () => {
 	return {
@@ -36,62 +77,160 @@ const getElements = () => {
 		select: shadowRoot.getElementById('select-option'),
 		floatingBtn: shadowRoot.getElementById('floating-btn'),
 		container: shadowRoot.getElementById('container'),
-		overlay: shadowRoot.getElementById('overlay'),
-		notify: shadowRoot.getElementById('notify'),
 		username: shadowRoot.getElementById('username'),
-		from: shadowRoot.getElementById('from'),
-		learn: shadowRoot.getElementById('learn'),
 		streak: shadowRoot.getElementById('streak'),
 		gem: shadowRoot.getElementById('gem'),
 		xp: shadowRoot.getElementById('xp'),
 		settingsBtn: shadowRoot.getElementById('settings-btn'),
 		settingsContainer: shadowRoot.getElementById('settings-container'),
 		settingsClose: shadowRoot.getElementById('settings-close'),
-		userInfoDisplay: shadowRoot.getElementById('user-info-display'),
-		setAccountPublic: shadowRoot.getElementById('set-account-public'),
-		setAccountPrivate: shadowRoot.getElementById('set-account-private'),
 	};
+};
+
+const getSettingsElements = () => ({
+	autoOpenUI: shadowRoot.getElementById('auto-open-ui'),
+	autoStart: shadowRoot.getElementById('auto-start'),
+	defaultOption: shadowRoot.getElementById('default-option'),
+	hideUsername: shadowRoot.getElementById('hide-username'),
+	keepScreenOn: shadowRoot.getElementById('keep-screen-on'),
+	autoStopTime: shadowRoot.getElementById('auto-stop-time'),
+	delayTime: shadowRoot.getElementById('delay-time'),
+	retryTime: shadowRoot.getElementById('retry-time'),
+	farmAnimation: shadowRoot.getElementById('farm-animation'),
+	autoKeepStreak: shadowRoot.getElementById('auto-keep-streak'),
+	saveSettingsBtn: shadowRoot.getElementById('save-settings'),
+	getJwtTokenBtn: shadowRoot.getElementById('get-jwt-token'),
+	resetSetting: shadowRoot.getElementById('reset-setting'),
+});
+
+const loadSettingsToUI = () => {
+	const el = getSettingsElements();
+	if (el.autoOpenUI) el.autoOpenUI.checked = settings.autoOpenUI;
+	if (el.autoStart) el.autoStart.checked = settings.autoStart;
+	if (el.defaultOption) el.defaultOption.value = settings.defaultOption.toString();
+	if (el.hideUsername) el.hideUsername.checked = settings.hideUsername;
+	if (el.keepScreenOn) el.keepScreenOn.checked = settings.keepScreenOn;
+	if (el.autoStopTime) el.autoStopTime.value = settings.autoStopTime;
+	if (el.delayTime) el.delayTime.value = settings.delayTime;
+	if (el.retryTime) el.retryTime.value = settings.retryTime;
+	if (el.farmAnimation) el.farmAnimation.checked = settings.farmAnimation;
+	if (el.autoKeepStreak) el.autoKeepStreak.checked = settings.autoKeepStreak;
+};
+
+const saveSettingsFromUI = () => {
+	const el = getSettingsElements();
+	const newSettings = {
+		autoOpenUI: el.autoOpenUI?.checked || false,
+		autoStart: el.autoStart?.checked || false,
+		defaultOption: parseInt(el.defaultOption?.value) || 1,
+		hideUsername: el.hideUsername?.checked || false,
+		keepScreenOn: el.keepScreenOn?.checked || false,
+		autoStopTime: parseInt(el.autoStopTime?.value) || 0,
+		delayTime: parseInt(el.delayTime?.value) || 500,
+		retryTime: parseInt(el.retryTime?.value) || 1000,
+		farmAnimation: el.farmAnimation?.checked || false,
+		autoKeepStreak: el.autoKeepStreak?.checked || false,
+	};
+	settings = newSettings;
+	saveSettings(newSettings);
+	return newSettings;
+};
+
+const populateDefaultOptionSelect = (optionsArray) => {
+	const select = shadowRoot.getElementById('default-option');
+	select.innerHTML = '';
+	optionsArray.forEach((opt, index) => {
+		const option = document.createElement('option');
+		option.value = index.toString();
+		option.textContent = opt.label;
+		if (opt.disabled) option.disabled = true;
+		select.appendChild(option);
+	});
+};
+
+const loadDefaultFarmingOption = () => {
+	const defaultOpt = farmOptions[settings.defaultOption];
+	const type = (defaultOpt && defaultOpt.type !== 'separator') ? defaultOpt.type : 'xp';
+	filterSelectByType(type);
+	const select = shadowRoot.getElementById('select-option');
+	const target = select.querySelector(`option[data-index="${settings.defaultOption}"]`);
+	if (target) target.selected = true;
+};
+
+const addEventSettings = (container) => {
+	const { settingsBtn, settingsContainer, settingsClose } = getElements();
+	const modal = toggleModal(settingsContainer, container);
+	settingsBtn.addEventListener('click', modal.show);
+	settingsClose.addEventListener('click', modal.hide);
+};
+
+const addSettingsEventListeners = () => {
+	const el = getSettingsElements();
+
+	el.saveSettingsBtn.addEventListener('click', () => {
+		saveSettingsFromUI();
+		showToast('Settings saved! Reload to apply changes.', 'success', 5000);
+		confirm('Reload now?') && location.reload();
+	});
+
+	el.getJwtTokenBtn.addEventListener('click', () => {
+		const token = getJwtToken();
+		if (token) {
+			confirm(`Your JWT Token:\n\n${token}\n\nCopy to clipboard?`) && navigator.clipboard.writeText(token);
+		}
+	});
+
+	el.resetSetting.addEventListener('click', () => {
+		if (confirm('Reset all settings to default? This cannot be undone.')) {
+			localStorage.removeItem('duofarmerSettings');
+			settings = { ...DEFAULT_SETTINGS };
+			loadSettingsToUI();
+			showToast('Settings reset! Reload to apply changes.', 'success', 5000);
+		}
+	});
 };
 
 const setRunningState = (running) => {
 	isRunning = running;
-	const { startBtn, stopBtn, select } = getElements();
 	if (running) {
-		startBtn.hidden = true;
-		stopBtn.hidden = false;
-		stopBtn.disabled = true;
-		stopBtn.className = 'disable-btn';
-		select.disabled = true;
+		farmAbortController = new AbortController();
 	} else {
-		stopBtn.hidden = true;
-		startBtn.hidden = false;
-		startBtn.disabled = true;
-		startBtn.className = 'disable-btn';
-		select.disabled = false;
-		// Xóa timer khi dừng
+		farmAbortController?.abort();
 		if (autoStopTimerId) {
 			clearTimeout(autoStopTimerId);
 			autoStopTimerId = null;
 		}
 	}
-
-	setTimeout(() => {
-		const { startBtn: btn, stopBtn: stop } = getElements();
-		btn.className = '';
-		btn.disabled = false;
-		stop.className = '';
-		stop.disabled = false;
-	}, 3000);
+	const { startBtn, stopBtn, select, container } = getElements();
+	container.classList.toggle('running', running);
+	if (running) {
+		startBtn.hidden = true;
+		stopBtn.hidden = false;
+		select.disabled = true;
+	} else {
+		stopBtn.hidden = true;
+		startBtn.hidden = false;
+		select.disabled = false;
+	}
 };
 
-const disableAllControls = (notifyMessage = null) => {
-	const { startBtn, stopBtn, select } = getElements();
-	startBtn.disabled = true;
-	startBtn.className = 'disable-btn';
-	stopBtn.disabled = true;
-	select.disabled = true;
-	if (notifyMessage) {
-		updateNotify(notifyMessage);
+
+const setLoadingOverlay = (visible, message = 'DuoFarmer is loading...', isError = false) => {
+	const overlay = shadowRoot?.getElementById('loading-overlay');
+	if (!overlay) return;
+	const text = overlay.querySelector('.loading-text');
+	const duopixel = overlay.querySelector('.loading-duopixel');
+	const ringBefore = overlay.querySelector('.loading-ring');
+	if (text) {
+		text.textContent = message;
+		text.style.color = isError ? '#f87171' : '';
+	}
+	if (duopixel) duopixel.style.background = isError ? '#dc2626' : '';
+	if (ringBefore) ringBefore.style.setProperty('--ring-color', isError ? '#dc2626' : '#10b981');
+	if (visible) {
+		overlay.classList.remove('hidden');
+	} else {
+		overlay.classList.add('hidden');
 	}
 };
 
@@ -109,16 +248,14 @@ const initInterface = () => {
 
 	document.body.appendChild(container);
 
-	// Hide settings container initially
 	const settingsContainer = shadowRoot.getElementById('settings-container');
 	if (settingsContainer) {
 		settingsContainer.style.display = 'none';
 	}
 
-	// Validate required elements exist
 	const requiredElements = [
 		'start-btn', 'stop-btn', 'select-option', 'floating-btn',
-		'container', 'overlay', 'notify'
+		'container',
 	];
 
 	for (const id of requiredElements) {
@@ -128,13 +265,23 @@ const initInterface = () => {
 	}
 };
 
-// UI toggle helpers
 const showElement = (element) => {
-	if (element) element.style.display = 'flex';
+	if (!element) return;
+	element.style.display = 'flex';
+	element.classList.remove('anim-out');
+	void element.offsetWidth;
+	element.classList.add('anim-in');
 };
 
 const hideElement = (element) => {
-	if (element) element.style.display = 'none';
+	if (!element) return;
+	element.classList.remove('anim-in');
+	void element.offsetWidth;
+	element.classList.add('anim-out');
+	element.addEventListener('animationend', () => {
+		element.style.display = 'none';
+		element.classList.remove('anim-out');
+	}, { once: true });
 };
 
 const toggleModal = (modalElement, mainElement) => {
@@ -151,26 +298,17 @@ const toggleModal = (modalElement, mainElement) => {
 };
 
 const setInterfaceVisible = (visible) => {
-	const { container, overlay } = getElements();
+	const { container } = getElements();
 	if (visible) {
 		showElement(container);
-		showElement(overlay);
 	} else {
 		hideElement(container);
-		hideElement(overlay);
 	}
 };
 
 const addEventFloatingBtn = () => {
 	const { floatingBtn } = getElements();
 	floatingBtn.addEventListener('click', () => {
-		if (isRunning) {
-			if (confirm('Duofarmer is farming. Do you want to stop and hide UI?')) {
-				setRunningState(false);
-				setInterfaceVisible(false);
-			}
-			return;
-		}
 		toggleInterface();
 	});
 };
@@ -179,12 +317,13 @@ const addEventStartBtn = () => {
 	const { startBtn, select } = getElements();
 	startBtn.addEventListener('click', async () => {
 		setRunningState(true);
+		showToast('Farming started.', 'success');
 
-		// Logic auto-stop dựa trên runtimeSettings
 		if (runtimeSettings.autoStopTime > 0) {
+			showToast(`Auto-stop in ${runtimeSettings.autoStopTime} minute(s).`);
 			autoStopTimerId = setTimeout(() => {
-				alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
-				updateNotify(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+				showToast(`Auto-stopped after ${runtimeSettings.autoStopTime} minute(s).`, 'info', 0);
+				GM_log(`Auto-stopped after ${runtimeSettings.autoStopTime} minutes.`);
 				setRunningState(false);
 			}, runtimeSettings.autoStopTime * 60 * 1000);
 		}
@@ -205,6 +344,7 @@ const addEventStopBtn = () => {
 	const { stopBtn } = getElements();
 	stopBtn.addEventListener('click', () => {
 		setRunningState(false);
+		showToast('Farming stopped.');
 	});
 };
 
@@ -217,86 +357,157 @@ const toggleInterface = () => {
 	setInterfaceVisible(!isInterfaceVisible());
 };
 
+const addEventStatCards = () => {
+	const typeMap = { 'streak-card': 'streak', 'xp-card': 'xp', 'gem-card': 'gem' };
+	shadowRoot.querySelectorAll('.stat-card').forEach(card => {
+		card.addEventListener('click', () => {
+			if (isRunning) return;
+			const type = Object.keys(typeMap).find(cls => card.classList.contains(cls));
+			if (type) filterSelectByType(typeMap[type]);
+		});
+	});
+};
+
+const showToast = (msg, type = 'info', duration = 3000) => {
+	GM_log(msg);
+	const toast = shadowRoot.getElementById('toast');
+	const toastMsg = shadowRoot.getElementById('toast-msg');
+	const permanent = duration === 0;
+	toast.className = '';
+	void toast.offsetWidth;
+	toast.style.setProperty('--duration', `${duration}ms`);
+	toast.className = `show ${type}${permanent ? ' permanent' : ''}`;
+	toastMsg.textContent = msg;
+};
+
+const addEventToast = () => {
+	const toast = shadowRoot.getElementById('toast');
+	toast.addEventListener('animationend', (e) => {
+		if (e.animationName === 'toast-life') toast.className = '';
+	});
+	shadowRoot.getElementById('toast-close').addEventListener('click', () => {
+		toast.classList.add('hiding');
+		toast.addEventListener('animationend', () => { toast.className = ''; }, { once: true });
+	});
+};
+
+const addEventInfoBtn = () => {
+	shadowRoot.getElementById('info-btn').addEventListener('click', () => {
+		showToast('Tap a stat card above to filter farming options by type.', 'info', 4000);
+	});
+};
+
 const addEventListeners = () => {
 	addEventStartBtn();
 	addEventStopBtn();
-
+	addEventStatCards();
+	addEventToast();
+	addEventInfoBtn();
 	const { container } = getElements();
-	settingsManager.addEventSettings(container);
-	settingsManager.addEventListeners();
+	addEventSettings(container);
+	addSettingsEventListeners();
 };
 
 const populateOptions = () => {
 	const select = shadowRoot.getElementById('select-option');
 	select.innerHTML = '';
-	farmOptions.forEach((opt) => {
+	farmOptions.forEach((opt, index) => {
+		if (opt.type === 'separator') return;
 		const option = document.createElement('option');
 		option.value = opt.value;
 		option.textContent = opt.label;
 		option.setAttribute('data-type', opt.type);
+		option.setAttribute('data-index', index);
 		if (opt.amount != null) option.setAttribute('data-amount', String(opt.amount));
 		if (opt.config) option.setAttribute('data-config', JSON.stringify(opt.config));
 		if (opt.disabled) option.disabled = true;
+		option.hidden = true;
 		select.appendChild(option);
 	});
 };
 
-const updateNotify = (message) => {
-	const { notify } = getElements();
-	const now = new Date().toLocaleTimeString();
-	notify.innerText = `[${now}] ` + message;
-	log(`[${now}] ${message}`);
+const filterSelectByType = (type) => {
+	const select = shadowRoot.getElementById('select-option');
+	const typeToClass = { streak: 'streak-card', xp: 'xp-card', gem: 'gem-card' };
+
+	shadowRoot.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+	const targetCard = shadowRoot.querySelector(`.${typeToClass[type]}`);
+	if (targetCard) targetCard.classList.add('active');
+
+	select.querySelectorAll('option[data-type]').forEach(opt => {
+		opt.hidden = opt.dataset.type !== type;
+	});
+
+	const first = Array.from(select.options).find(o => o.dataset.type === type && !o.disabled);
+	if (first) first.selected = true;
 };
 
+
+
+const animateNumber = (element, toValue, duration = 700) => {
+	cancelAnimationFrame(element._animFrame);
+
+	const fromValue = parseFloat(element.textContent.replace(/,/g, '')) || 0;
+	if (fromValue === toValue) return;
+
+	if (!settings?.farmAnimation) {
+		element.textContent = toValue.toLocaleString();
+		return;
+	}
+
+	const tilt = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 6);
+	element.style.setProperty('--tilt', `${tilt.toFixed(1)}deg`);
+	element.style.setProperty('--anim-dur', `${duration}ms`);
+	element.classList.remove('counting');
+	void element.offsetWidth;
+	element.classList.add('counting');
+
+	const startTime = performance.now();
+	const diff = toValue - fromValue;
+
+	const tick = (now) => {
+		const progress = Math.min((now - startTime) / duration, 1);
+		const eased = 1 - Math.pow(2, -10 * progress);
+		element.textContent = Math.round(fromValue + diff * eased).toLocaleString();
+		element._animFrame = progress < 1
+			? requestAnimationFrame(tick)
+			: void (element.textContent = toValue.toLocaleString(), element.classList.remove('counting'));
+	};
+
+	element._animFrame = requestAnimationFrame(tick);
+};
 
 const updateUserInfo = () => {
 	const elements = getElements();
 	if (userInfo) {
 		elements.username.innerText = userInfo.username;
-		elements.from.innerText = userInfo.fromLanguage;
-		elements.learn.innerText = userInfo.learningLanguage;
-		elements.streak.innerText = userInfo.streak;
-		elements.gem.innerText = userInfo.gems;
-		elements.xp.innerText = userInfo.totalXp;
-		
-		// Check privacy settings
-		hideElement(userInfo.privacySettings && (
-			userInfo.privacySettings.includes('DISABLE_FRIENDS_QUESTS') ||
-			userInfo.privacySettings.includes('DISABLE_LEADERBOARDS')
-		) ? elements.setAccountPrivate : elements.setAccountPublic);
-		
-		elements.userInfoDisplay.innerText = JSON.stringify({
-			id: userInfo.id,
-			username: userInfo.username,
-			fromLanguage: userInfo.fromLanguage,
-			learningLanguage: userInfo.learningLanguage,
-			streak: userInfo.streak,
-			gems: userInfo.gems,
-			totalXp: userInfo.totalXp,
-			creationDate: userInfo.creationDate,
-			skillId: skillId,
-			jwt: "hidden - use get jwt button to view",
-			sub: sub,
-			privacySettings: userInfo.privacySettings,
-			streakData: userInfo.streakData
-		}, null, 2);
+		animateNumber(elements.streak, userInfo.streak);
+		animateNumber(elements.gem, userInfo.gems);
+		animateNumber(elements.xp, userInfo.totalXp);
+
+		const lang = userInfo.fromLanguage?.toLowerCase();
+		const country = lang in LANG_TO_COUNTRY ? LANG_TO_COUNTRY[lang] : lang;
+		const flagEl = shadowRoot.getElementById('avatar-flag');
+		if (flagEl && country) flagEl.src = `https://flagcdn.com/${country}.svg`;
+
+		const avatarEl = shadowRoot.getElementById('avatar-img');
+		if (avatarEl && userInfo.picture) {
+			avatarEl.src = userInfo.picture;
+			avatarEl.style.display = '';
+		}
 	}
 };
-
 
 const updateFarmResult = (type, farmedAmount) => {
 	switch (type) {
 		case 'gem':
 			userInfo = { ...userInfo, gems: userInfo.gems + farmedAmount };
-			updateNotify(`You got ${farmedAmount} gem!!!`);
 			break;
 		case 'xp':
 			userInfo = { ...userInfo, totalXp: userInfo.totalXp + farmedAmount };
-			updateNotify(`You got ${farmedAmount} XP!!!`);
 			break;
 		case 'streak':
 			userInfo = { ...userInfo, streak: userInfo.streak + farmedAmount };
-			updateNotify(`You got ${farmedAmount} streak! (maybe some xp too, idk)`);
 			break;
 	}
 	updateUserInfo();
@@ -306,37 +517,34 @@ const gemFarmingLoop = async () => {
 	const gemFarmed = 30;
 	while (isRunning) {
 		try {
-			await apiService.farmGemOnce(userInfo);
+			await apiService.farmGemOnce();
 			updateFarmResult('gem', gemFarmed);
-			await delay(runtimeSettings.delayTime);
+			await abortableDelay(runtimeSettings.delayTime);
 		} catch (error) {
-			updateNotify(`Error ${error.status}! Please report in telegram group!`);
-			await delay(runtimeSettings.retryTime);
+			if (error.name === 'AbortError') return;
+			GM_log(`[gem] ${error?.status || error?.message || error}`);
+			try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 		}
 	}
 };
 
-const xpFarmingLoop = async (value, amount, config = {}) => {
+const xpFarmingLoop = async (config = {}) => {
 	while (isRunning) {
 		try {
-			let response;
-			if (value === 'session') {
-				response = await apiService.farmSessionOnce(config);
-			} else if (value === 'story') {
-				response = await apiService.farmStoryOnce(config);
-			}
-			if (response.status > 400) {
-				updateNotify(`Something went wrong! Pls try other farming methods.\nIf you are using story method, u should try with English course!`);
-				await delay(runtimeSettings.retryTime);
+			const response = await apiService.farmSessionOnce(config);
+			if (response.status >= 400) {
+				GM_log(`[xp] HTTP ${response.status}, retrying...`);
+				await abortableDelay(runtimeSettings.retryTime);
 				continue;
 			}
 			const responseData = await response.json();
 			const xpFarmed = responseData?.awardedXp || responseData?.xpGain || 0;
 			updateFarmResult('xp', xpFarmed);
-			await delay(runtimeSettings.delayTime);
+			await abortableDelay(runtimeSettings.delayTime);
 		} catch (error) {
-			updateNotify(`Error ${error.status}! Please report in telegram group!`);
-			await delay(runtimeSettings.retryTime);
+			if (error.name === 'AbortError') return;
+			GM_log(`[xp] ${error?.status || error?.message || error}`);
+			try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 		}
 	}
 };
@@ -345,10 +553,16 @@ const streakFarmingLoop = async (value = 'farm') => {
 	const SECONDS_PER_DAY = 86400;
 	const SESSION_DURATION_SECONDS = 60;
 
-	const hasStreak = !!userInfo.streakData.currentStreak;
-	const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
+	const hasStreak = !!userInfo.streakData?.currentStreak;
+	const startStreakDate = hasStreak ? userInfo.streakData?.currentStreak.startDate : new Date();
 	const startFarmStreakTimestamp = toTimestamp(startStreakDate);
 	let currentTimestamp = hasStreak ? startFarmStreakTimestamp - SECONDS_PER_DAY : startFarmStreakTimestamp;
+
+	const lastExtendedDate = userInfo.streakData?.currentStreak?.lastExtendedDate;
+	const today = getTodayDateStr();
+	if (lastExtendedDate === today) {
+		currentTimestamp -= SECONDS_PER_DAY;
+	}
 
 	if (value === 'repair') {
 		const creationDate = userInfo.creationDate;
@@ -358,8 +572,7 @@ const streakFarmingLoop = async (value = 'farm') => {
 		const maxPossibleStreak = daysSinceCreation + 1;
 
 		if (currentStreak >= maxPossibleStreak) {
-			const message = `Current streak (${currentStreak}) is greater than or equal to maximum possible streak (${maxPossibleStreak}). No repair needed.`;
-			updateNotify(message);
+			showToast(`No repair needed. Current: ${currentStreak}, max possible: ${maxPossibleStreak}.`, 'info');
 			setRunningState(false);
 			return;
 		}
@@ -368,13 +581,12 @@ const streakFarmingLoop = async (value = 'farm') => {
 		const missingStreaks = maxPossibleStreak - currentStreak;
 
 		if (missingStreaks <= 0) {
-			const message = 'No missing streaks to repair.';
-			updateNotify(message);
+			GM_log('[streak] No missing streaks to repair.');
 			setRunningState(false);
 			return;
 		}
 
-		updateNotify(`Repairing ${missingStreaks} missing streaks...`);
+		GM_log(`[streak] Repairing ${missingStreaks} missing streaks...`);
 
 		let repairTimestamp = currentTimestamp;
 		let repairedCount = 0;
@@ -382,66 +594,88 @@ const streakFarmingLoop = async (value = 'farm') => {
 		while (isRunning && repairTimestamp >= endTimestamp && repairedCount < missingStreaks) {
 			try {
 				const sessionRes = await apiService.farmSessionOnce({ startTime: repairTimestamp, endTime: repairTimestamp + SESSION_DURATION_SECONDS });
-				if (sessionRes) {
+				if (sessionRes.status < 400) {
 					repairTimestamp -= SECONDS_PER_DAY;
 					updateFarmResult('streak', 1);
 					repairedCount += 1;
-					await delay(runtimeSettings.delayTime);
+					await abortableDelay(runtimeSettings.delayTime);
 				} else {
-					updateNotify("Failed to repair streak session, I'm trying again...");
-					await delay(runtimeSettings.retryTime);
-					continue;
+					GM_log(`[streak] repair HTTP ${sessionRes.status}, retrying...`);
+					await abortableDelay(runtimeSettings.retryTime);
 				}
 			} catch (error) {
-				updateNotify(`Error in repairStreak: ${error?.message || error}`);
-				await delay(runtimeSettings.retryTime);
-				continue;
+				if (error.name === 'AbortError') return;
+				GM_log(`[streak] repair error: ${error?.message || error}`);
+				try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 			}
 		}
 
 		if (repairedCount >= missingStreaks || repairTimestamp < endTimestamp) {
-			const message = `Streak repair completed. Repaired ${repairedCount} day(s).`;
-			updateNotify(message);
+			showToast(`Repair complete: ${repairedCount} day(s) repaired.`, 'success', 30000);
 			setRunningState(false);
 		}
 	} else {
 		while (isRunning) {
 			try {
 				const sessionRes = await apiService.farmSessionOnce({ startTime: currentTimestamp, endTime: currentTimestamp + SESSION_DURATION_SECONDS });
-				if (sessionRes) {
+				if (sessionRes.status < 400) {
 					currentTimestamp -= SECONDS_PER_DAY;
 					updateFarmResult('streak', 1);
-					await delay(runtimeSettings.delayTime);
+					await abortableDelay(runtimeSettings.delayTime);
 				} else {
-					updateNotify("Failed to farm streak session, I'm trying again...");
-					await delay(runtimeSettings.retryTime);
-					continue;
+					GM_log(`[streak] farm HTTP ${sessionRes.status}, retrying...`);
+					await abortableDelay(runtimeSettings.retryTime);
 				}
 			} catch (error) {
-				updateNotify(`Error in farmStreak: ${error?.message || error}`);
-				await delay(runtimeSettings.retryTime);
-				continue;
+				if (error.name === 'AbortError') return;
+				GM_log(`[streak] farm error: ${error?.message || error}`);
+				try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 			}
 		}
 	}
 };
 
+const keepStreak = async () => {
+	const lastExtended = userInfo.streakData?.currentStreak?.lastExtendedDate;
+	if (lastExtended === getTodayDateStr()) {
+		showToast('Streak already done today.', 'info');
+		return;
+	}
+	showToast('Auto keeping streak...');
+	try {
+		const streakBefore = userInfo.streak;
+		const headers = formatHeaders(jwt);
+		await apiService.farmSessionOnce({});
+		const freshInfo = await getUserInfo(sub, headers);
+		userInfo = { ...userInfo, ...freshInfo };
+		updateUserInfo();
+		if (userInfo.streak > streakBefore) {
+			showToast('Streak kept successfully!', 'success',0);
+		} else {
+			showToast('Streak already done today.', 'info');
+		}
+	} catch (err) {
+		GM_log(`[autoKeepStreak] error: ${err?.message || err}`);
+		showToast('Auto keep streak failed.', 'error');
+	}
+};
+
 const farmSelectedOption = async (option) => {
-	const { type, value, amount, config } = option;
+	const { type, value, config } = option;
 	switch (type) {
 		case 'gem':
-			gemFarmingLoop();
+			await gemFarmingLoop();
 			break;
 		case 'xp':
-			xpFarmingLoop(value, amount, config);
+			await xpFarmingLoop(config);
 			break;
 		case 'streak':
-			streakFarmingLoop(value);
+			await streakFarmingLoop(value);
 			break;
 	}
 };
 
-const loadSavedSettings = (settings) => {
+const loadSavedSettings = () => {
 	runtimeSettings = { ...runtimeSettings, ...settings };
 
 	const elements = getElements();
@@ -456,91 +690,83 @@ const loadSavedSettings = (settings) => {
 		elements.username.classList.add('blur');
 	}
 	if (settings.keepScreenOn && 'wakeLock' in navigator) {
-		navigator.wakeLock.request('screen').then(wakeLock => {
-			log('Screen wake lock active');
-		})
+		navigator.wakeLock.request('screen').then(() => {
+			GM_log('Screen wake lock active');
+		});
+	}
+	if (settings.autoKeepStreak) {
+		keepStreak();
 	}
 };
 
+const waitForJwt = () => new Promise((resolve) => {
+	const attempt = () => {
+		const token = getJwtToken();
+		if (token) return resolve(token);
+		setLoadingOverlay(true, 'Waiting for login...', true);
+		setTimeout(attempt, 2000);
+	};
+	attempt();
+});
 
 const initVariables = async () => {
 	jwt = getJwtToken();
 	if (!jwt) {
-		disableAllControls('Please login to Duolingo and reload!');
-		return;
+		jwt = await waitForJwt();
+		setLoadingOverlay(true, 'DuoFarmer is loading...');
 	}
-	defaultHeaders = formatHeaders(jwt);
+	const headers = formatHeaders(jwt);
 	const decodedJwt = decodeJwtToken(jwt);
 	sub = decodedJwt.sub;
-	userInfo = await ApiService.getUserInfo(sub, defaultHeaders);
-	
-	apiService = new ApiService(jwt, defaultHeaders, userInfo, sub);
-	settingsManager = new SettingsManager(shadowRoot, apiService);
+	userInfo = await getUserInfo(sub, headers);
 
-	//Lấy skillId cho option 110 xp, sau đó tạo options
+	apiService = createApi(jwt, userInfo, () => farmAbortController?.signal);
+
 	skillId = extractSkillId(userInfo.currentCourse || {});
 	farmOptions = [
-		{ type: 'separator', label: '⟡ GEM FARMING ⟡', value: '', disabled: true },
-		{ type: 'gem', label: 'Gem 30', value: 'fixed', amount: 30 },
-		{ type: 'separator', label: '⟡ XP SESSION FARMING ⟡', value: '', disabled: true },
-		{ type: 'separator', label: '(slow, safe, any language)', value: '', disabled: true },
+		{ type: 'separator', label: '── GEM ──', value: '', disabled: true },
+		{ type: 'gem', label: 'Gem x30', value: 'fixed', amount: 30 },
+		{ type: 'separator', label: '── XP ──', value: '', disabled: true },
 		{ type: 'xp', label: 'XP 10', value: 'session', amount: 10, config: {} },
-		// { type: 'xp', label: 'XP 13', value: 'session', amount: 13, config: { updateSessionPayload: { enableBonusPoints: true } } },
 		{ type: 'xp', label: 'XP 20', value: 'session', amount: 20, config: { updateSessionPayload: { hasBoost: true } } },
-		// { type: 'xp', label: 'XP 26', value: 'session', amount: 26, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true } } },
-		// { type: 'xp', label: 'XP 36', value: 'session', amount: 36, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10 } } },
 		{ type: 'xp', label: 'XP 40', value: 'session', amount: 40, config: { updateSessionPayload: { hasBoost: true, type: 'TARGET_PRACTICE' } } },
 		{ type: 'xp', label: 'XP 50', value: 'session', amount: 50, config: { updateSessionPayload: { enableBonusPoints: true, hasBoost: true, happyHourBonusXp: 10, type: 'TARGET_PRACTICE' } } },
-		{ type: 'xp', label: 'XP 110', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
-		// {
-		// 	type: 'xp', label: 'TEST', value: 'session', amount: 0, config: {
-		// 		sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] },
-		// 		updateSessionPayload: {
-		// 			hasBoost: true,
-		// 			happyHourBonusXp: 10,
-		// 			pathLevelSpecifics: {
-		// 				unitIndex: 0,
-		// 			}
-		// 		}
-		// 	},
-		// 	disabled: !skillId
-		// },
-		{ type: 'separator', label: '⟡ XP STORY FARMING ⟡', value: '', disabled: true },
-		{ type: 'separator', label: '(fast, unsafe, English only) ', value: '', disabled: true },
-		{ type: 'xp', label: 'XP 50', value: 'story', amount: 50, config: {} },
-		// { type: 'xp', label: 'XP 90 ', value: 'story', amount: 90, config: { storyPayload: { hasXpBoost: true } } },
-		{ type: 'xp', label: 'XP 100 ', value: 'story', amount: 100, config: { storyPayload: { happyHourBonusXp: 50 } } },
-		{ type: 'xp', label: 'XP 200 ', value: 'story', amount: 200, config: { storyPayload: { happyHourBonusXp: 150 } } },
-		{ type: 'xp', label: 'XP 300 ', value: 'story', amount: 300, config: { storyPayload: { happyHourBonusXp: 250 } } },
-		{ type: 'xp', label: 'XP 400 ', value: 'story', amount: 400, config: { storyPayload: { happyHourBonusXp: 350 } } },
-		{ type: 'xp', label: 'XP 499 ', value: 'story', amount: 499, config: { storyPayload: { happyHourBonusXp: 449 } } },
-		{ type: 'separator', label: '⟡ STREAK FARMING ⟡', value: '', disabled: true },
-		{ type: 'streak', label: 'Nonstop farm (unlimited)', value: 'farm' },
-		{ type: 'streak', label: 'Repair streak (from account creation)', value: 'repair' },
+		{ type: 'xp', label: 'XP 110 (Unit Test)', value: 'session', amount: 110, config: { sessionPayload: { type: 'UNIT_TEST', skillIds: skillId ? [skillId] : [] }, updateSessionPayload: { type: "UNIT_TEST", hasBoost: true, happyHourBonusXp: 10, pathLevelSpecifics: { unitIndex: 0 } } }, disabled: !skillId },
+		{ type: 'separator', label: '── STREAK ──', value: '', disabled: true },
+		{ type: 'streak', label: 'Farm (unlimited)', value: 'farm' },
+		{ type: 'streak', label: 'Repair streak', value: 'repair' },
 	];
 };
 
 const initSettings = () => {
-	// Load option lên setting menu và ghi đè defaultOption lên main
-	settingsManager.populateDefaultOptionSelect(farmOptions);
-	settingsManager.loadDefaultFarmingOption(farmOptions);
-	settingsManager.loadSettingsToUI();
-}
+	settings = loadSettings();
+	populateDefaultOptionSelect(farmOptions);
+	loadDefaultFarmingOption();
+	loadSettingsToUI();
+};
 
+
+const applyAutoOpenMenu = () => {
+	setInterfaceVisible(loadSettings()?.autoOpenUI ?? false);
+};
 
 (async () => {
 	try {
-		initInterface(); //khởi tạo giao diện
-		setInterfaceVisible(false); //ẩn giao diện
-		addEventFloatingBtn(); //thêm sự kiện cho floating button
-		await initVariables(); //khởi tạo biến, class
-		populateOptions(); //gắn options lên giao diện
-		initSettings(); //cấu hình setting
-		updateUserInfo(); //cập nhật thông tin user
-		addEventListeners(); // thêm các sự kiện còn lại
-		loadSavedSettings(settingsManager.getSettings()); //tải setting đã lưu
-		updateNotify('Duofarmer ready! For safety, I suggest that you use 2nd accounts.\nLimited or no use of "Story Farming"!');
+		initInterface();
+		addEventFloatingBtn();
+		applyAutoOpenMenu();
+
+		await initVariables();
+
+		populateOptions();
+		initSettings();
+		updateUserInfo();
+		addEventListeners();
+		loadSavedSettings();
+		setLoadingOverlay(false);
+		GM_log('[DuoFarmer] ready');
 	} catch (err) {
-		logError(err, 'Duofarmer init error!');
+		GM_log(`Duofarmer init error: ${err?.message || err}`);
+		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);
 	}
 })();
