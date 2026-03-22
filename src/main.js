@@ -391,11 +391,18 @@ const addEventToast = () => {
 	});
 };
 
+const addEventInfoBtn = () => {
+	shadowRoot.getElementById('info-btn').addEventListener('click', () => {
+		showToast('Tap a stat card above to filter farming options by type.', 'info', 4000);
+	});
+};
+
 const addEventListeners = () => {
 	addEventStartBtn();
 	addEventStopBtn();
 	addEventStatCards();
 	addEventToast();
+	addEventInfoBtn();
 	const { container } = getElements();
 	addEventSettings(container);
 	addSettingsEventListeners();
@@ -546,12 +553,12 @@ const streakFarmingLoop = async (value = 'farm') => {
 	const SECONDS_PER_DAY = 86400;
 	const SESSION_DURATION_SECONDS = 60;
 
-	const hasStreak = !!userInfo.streakData.currentStreak;
-	const startStreakDate = hasStreak ? userInfo.streakData.currentStreak.startDate : new Date();
+	const hasStreak = !!userInfo.streakData?.currentStreak;
+	const startStreakDate = hasStreak ? userInfo.streakData?.currentStreak.startDate : new Date();
 	const startFarmStreakTimestamp = toTimestamp(startStreakDate);
 	let currentTimestamp = hasStreak ? startFarmStreakTimestamp - SECONDS_PER_DAY : startFarmStreakTimestamp;
 
-	const lastExtendedDate = userInfo.streakData.currentStreak?.lastExtendedDate;
+	const lastExtendedDate = userInfo.streakData?.currentStreak?.lastExtendedDate;
 	const today = getTodayDateStr();
 	if (lastExtendedDate === today) {
 		currentTimestamp -= SECONDS_PER_DAY;
