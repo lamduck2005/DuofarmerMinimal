@@ -1,7 +1,7 @@
 import templateRaw from './main.html?raw';
 import cssText from './main.css?inline';
 import { getUserInfo, createApi } from './api.js';
-import { delay, toTimestamp, getJwtToken, decodeJwtToken, daysBetween, getCurrentUnixTimestamp } from './utils.js';
+import { delay, toTimestamp, getJwtToken, decodeJwtToken, daysBetween, getCurrentUnixTimestamp, getTodayDateStr } from './utils.js';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS } from './settings.js';
 
 let runtimeSettings = {
@@ -94,7 +94,10 @@ const getSettingsElements = () => ({
 	hideUsername: shadowRoot.getElementById('hide-username'),
 	keepScreenOn: shadowRoot.getElementById('keep-screen-on'),
 	autoStopTime: shadowRoot.getElementById('auto-stop-time'),
+	delayTime: shadowRoot.getElementById('delay-time'),
+	retryTime: shadowRoot.getElementById('retry-time'),
 	farmAnimation: shadowRoot.getElementById('farm-animation'),
+	autoKeepStreak: shadowRoot.getElementById('auto-keep-streak'),
 	saveSettingsBtn: shadowRoot.getElementById('save-settings'),
 	getJwtTokenBtn: shadowRoot.getElementById('get-jwt-token'),
 	resetSetting: shadowRoot.getElementById('reset-setting'),
@@ -108,7 +111,10 @@ const loadSettingsToUI = () => {
 	if (el.hideUsername) el.hideUsername.checked = settings.hideUsername;
 	if (el.keepScreenOn) el.keepScreenOn.checked = settings.keepScreenOn;
 	if (el.autoStopTime) el.autoStopTime.value = settings.autoStopTime;
+	if (el.delayTime) el.delayTime.value = settings.delayTime;
+	if (el.retryTime) el.retryTime.value = settings.retryTime;
 	if (el.farmAnimation) el.farmAnimation.checked = settings.farmAnimation;
+	if (el.autoKeepStreak) el.autoKeepStreak.checked = settings.autoKeepStreak;
 };
 
 const saveSettingsFromUI = () => {
@@ -120,7 +126,10 @@ const saveSettingsFromUI = () => {
 		hideUsername: el.hideUsername?.checked || false,
 		keepScreenOn: el.keepScreenOn?.checked || false,
 		autoStopTime: parseInt(el.autoStopTime?.value) || 0,
+		delayTime: parseInt(el.delayTime?.value) || 500,
+		retryTime: parseInt(el.retryTime?.value) || 1000,
 		farmAnimation: el.farmAnimation?.checked || false,
+		autoKeepStreak: el.autoKeepStreak?.checked || false,
 	};
 	settings = newSettings;
 	saveSettings(newSettings);
@@ -160,7 +169,7 @@ const addSettingsEventListeners = () => {
 
 	el.saveSettingsBtn.addEventListener('click', () => {
 		saveSettingsFromUI();
-		alert('Settings saved successfully, reload the page to apply changes!');
+		showToast('Settings saved! Reload to apply changes.', 'success', 5000);
 		confirm('Reload now?') && location.reload();
 	});
 
@@ -176,7 +185,7 @@ const addSettingsEventListeners = () => {
 			localStorage.removeItem('duofarmerSettings');
 			settings = { ...DEFAULT_SETTINGS };
 			loadSettingsToUI();
-			alert('All settings reset successfully! Reload to apply changes.');
+			showToast('Settings reset! Reload to apply changes.', 'success', 5000);
 		}
 	});
 };
@@ -308,10 +317,12 @@ const addEventStartBtn = () => {
 	const { startBtn, select } = getElements();
 	startBtn.addEventListener('click', async () => {
 		setRunningState(true);
+		showToast('Farming started.', 'success');
 
 		if (runtimeSettings.autoStopTime > 0) {
+			showToast(`Auto-stop in ${runtimeSettings.autoStopTime} minute(s).`);
 			autoStopTimerId = setTimeout(() => {
-				alert(`Auto-stopped by setting (stop after ${runtimeSettings.autoStopTime} minutes).`);
+				showToast(`Auto-stopped after ${runtimeSettings.autoStopTime} minute(s).`, 'info', 0);
 				GM_log(`Auto-stopped after ${runtimeSettings.autoStopTime} minutes.`);
 				setRunningState(false);
 			}, runtimeSettings.autoStopTime * 60 * 1000);
@@ -333,6 +344,7 @@ const addEventStopBtn = () => {
 	const { stopBtn } = getElements();
 	stopBtn.addEventListener('click', () => {
 		setRunningState(false);
+		showToast('Farming stopped.');
 	});
 };
 
@@ -357,9 +369,12 @@ const addEventStatCards = () => {
 };
 
 const showToast = (msg, type = 'info', duration = 3000) => {
+	GM_log(msg);
 	const toast = shadowRoot.getElementById('toast');
 	const toastMsg = shadowRoot.getElementById('toast-msg');
 	const permanent = duration === 0;
+	toast.className = '';
+	void toast.offsetWidth;
 	toast.style.setProperty('--duration', `${duration}ms`);
 	toast.className = `show ${type}${permanent ? ' permanent' : ''}`;
 	toastMsg.textContent = msg;
@@ -467,6 +482,12 @@ const updateUserInfo = () => {
 		const country = lang in LANG_TO_COUNTRY ? LANG_TO_COUNTRY[lang] : lang;
 		const flagEl = shadowRoot.getElementById('avatar-flag');
 		if (flagEl && country) flagEl.src = `https://flagcdn.com/${country}.svg`;
+
+		const avatarEl = shadowRoot.getElementById('avatar-img');
+		if (avatarEl && userInfo.picture) {
+			avatarEl.src = userInfo.picture;
+			avatarEl.style.display = '';
+		}
 	}
 };
 
@@ -530,6 +551,12 @@ const streakFarmingLoop = async (value = 'farm') => {
 	const startFarmStreakTimestamp = toTimestamp(startStreakDate);
 	let currentTimestamp = hasStreak ? startFarmStreakTimestamp - SECONDS_PER_DAY : startFarmStreakTimestamp;
 
+	const lastExtendedDate = userInfo.streakData.currentStreak?.lastExtendedDate;
+	const today = getTodayDateStr();
+	if (lastExtendedDate === today) {
+		currentTimestamp -= SECONDS_PER_DAY;
+	}
+
 	if (value === 'repair') {
 		const creationDate = userInfo.creationDate;
 		const currentStreak = userInfo.streak || 0;
@@ -538,7 +565,7 @@ const streakFarmingLoop = async (value = 'farm') => {
 		const maxPossibleStreak = daysSinceCreation + 1;
 
 		if (currentStreak >= maxPossibleStreak) {
-			GM_log(`[streak] No repair needed. Current: ${currentStreak}, max possible: ${maxPossibleStreak}`);
+			showToast(`No repair needed. Current: ${currentStreak}, max possible: ${maxPossibleStreak}.`, 'info');
 			setRunningState(false);
 			return;
 		}
@@ -577,7 +604,7 @@ const streakFarmingLoop = async (value = 'farm') => {
 		}
 
 		if (repairedCount >= missingStreaks || repairTimestamp < endTimestamp) {
-			GM_log(`[streak] Repair done. Repaired ${repairedCount} day(s).`);
+			showToast(`Repair complete: ${repairedCount} day(s) repaired.`, 'success', 30000);
 			setRunningState(false);
 		}
 	} else {
@@ -598,6 +625,31 @@ const streakFarmingLoop = async (value = 'farm') => {
 				try { await abortableDelay(runtimeSettings.retryTime); } catch { return; }
 			}
 		}
+	}
+};
+
+const keepStreak = async () => {
+	const lastExtended = userInfo.streakData?.currentStreak?.lastExtendedDate;
+	if (lastExtended === getTodayDateStr()) {
+		showToast('Streak already done today.', 'info');
+		return;
+	}
+	showToast('Auto keeping streak...');
+	try {
+		const streakBefore = userInfo.streak;
+		const headers = formatHeaders(jwt);
+		await apiService.farmSessionOnce({});
+		const freshInfo = await getUserInfo(sub, headers);
+		userInfo = { ...userInfo, ...freshInfo };
+		updateUserInfo();
+		if (userInfo.streak > streakBefore) {
+			showToast('Streak kept successfully!', 'success',0);
+		} else {
+			showToast('Streak already done today.', 'info');
+		}
+	} catch (err) {
+		GM_log(`[autoKeepStreak] error: ${err?.message || err}`);
+		showToast('Auto keep streak failed.', 'error');
 	}
 };
 
@@ -634,6 +686,9 @@ const loadSavedSettings = () => {
 		navigator.wakeLock.request('screen').then(() => {
 			GM_log('Screen wake lock active');
 		});
+	}
+	if (settings.autoKeepStreak) {
+		keepStreak();
 	}
 };
 
@@ -703,7 +758,6 @@ const applyAutoOpenMenu = () => {
 		loadSavedSettings();
 		setLoadingOverlay(false);
 		GM_log('[DuoFarmer] ready');
-		showToast("Something went wrong. ","success",0)
 	} catch (err) {
 		GM_log(`Duofarmer init error: ${err?.message || err}`);
 		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);

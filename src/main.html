@@ -21,6 +21,9 @@
   <symbol id="ic-close" viewBox="0 -960 960 960">
     <path d="M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z"/>
   </symbol>
+  <symbol id="ic-avatar" viewBox="0 0 24 24">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </symbol>
   <symbol id="ic-chevron-down" viewBox="0 0 24 24">
     <path d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z"/>
   </symbol>
@@ -108,9 +111,8 @@
     <div class="footer-left">
       <div class="avatar-wrap">
         <div class="avatar-ring">
-          <svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
+          <svg class="avatar-icon" fill="currentColor"><use href="#ic-avatar"/></svg>
+          <img id="avatar-img" class="avatar-img" src="" alt="avatar" onerror="this.style.display='none'"/>
         </div>
         <img id="avatar-flag" class="avatar-flag" src="https://flagcdn.com/vn.svg" alt="flag"/>
       </div>
@@ -155,6 +157,10 @@
           <input type="checkbox" id="auto-start">
         </div>
         <div class="setting-item">
+          <span>Auto keep streak on load</span>
+          <input type="checkbox" id="auto-keep-streak">
+        </div>
+        <div class="setting-item">
           <span>Default farming option</span>
           <select id="default-option"></select>
         </div>
@@ -172,6 +178,14 @@
         <div class="setting-item">
           <span>Auto stop after (min) (0 = unlimited)</span>
           <input type="number" id="auto-stop-time" min="0" max="60" value="0">
+        </div>
+        <div class="setting-item">
+          <span>Delay between requests (ms)</span>
+          <input type="number" id="delay-time" min="0" value="500">
+        </div>
+        <div class="setting-item">
+          <span>Retry delay on error (ms)</span>
+          <input type="number" id="retry-time" min="0" value="1000">
         </div>
         <div class="setting-item">
           <span>Enable farm animation</span>

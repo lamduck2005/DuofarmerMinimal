@@ -6,6 +6,9 @@ export const DEFAULT_SETTINGS = {
     keepScreenOn: false,
     autoStopTime: 0,
     farmAnimation: false,
+    delayTime: 500,
+    retryTime: 1000,
+    autoKeepStreak: false,
 }
 
 export function loadSettings() {

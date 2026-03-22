@@ -1,9 +1,44 @@
 import { getCurrentUnixTimestamp } from './utils.js';
 
+const FIELDS = [
+    'id', 'username', 'fromLanguage', 'learningLanguage',
+    'streak', 'totalXp', 'gems', 'creationDate', 'picture',
+    'level', 'numFollowers', 'numFollowing', 'privacySettings',
+    'streakData{currentStreak,longestStreak,previousStreak}',
+    'currentCourse{pathSectioned{units{levels{pathLevelMetadata{skillId},pathLevelClientData{skillId}}}}}',
+].join(',');
+
+const API_VERSIONS = ['2023-05-23', '2017-06-30'];
+
 export async function getUserInfo(sub, headers) {
-    const url = `https://www.duolingo.com/2017-06-30/users/${sub}?fields=id,username,fromLanguage,learningLanguage,streak,totalXp,level,numFollowers,numFollowing,gems,creationDate,streakData,privacySettings,currentCourse{pathSectioned{units{levels{pathLevelMetadata{skillId}}}}}`;
-    const response = await fetch(url, { method: 'GET', headers });
-    return await response.json();
+    let data = null;
+    for (const version of API_VERSIONS) {
+        try {
+            const url = `https://www.duolingo.com/${version}/users/${sub}?fields=${FIELDS}`;
+            const res = await fetch(url, { method: 'GET', headers });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await res.json();
+            break;
+        } catch (err) {
+            GM_log(`[getUserInfo] ${version} failed: ${err.message}`);
+        }
+    }
+    if (!data) throw new Error('All API versions failed');
+
+    if (data.picture) {
+        let pic = data.picture.startsWith('//') ? 'https:' + data.picture : data.picture;
+        pic = pic + '/medium'; // size: medium | small | large
+        data.picture = pic;
+    }
+
+    const streakFromField = data.streak;
+    const streakFromData = data.streakData?.currentStreak?.length;
+    if (streakFromData !== undefined && streakFromField !== streakFromData) {
+        GM_log(`[getUserInfo] streak mismatch: streak=${streakFromField}, currentStreak.length=${streakFromData}, using streak field`);
+        data.streak = streakFromField;
+    }
+
+    return data;
 }
 
 export function createApi(jwt, userInfo, getSignal) {
