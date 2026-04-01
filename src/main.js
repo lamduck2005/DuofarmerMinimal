@@ -308,8 +308,32 @@ const setInterfaceVisible = (visible) => {
 
 const addEventFloatingBtn = () => {
 	const { floatingBtn } = getElements();
+	const HOLD_DURATION = 600;
+	let holdTimer = null;
+	let didHold = false;
+
+	const startHold = () => {
+		didHold = false;
+		holdTimer = setTimeout(async () => {
+			didHold = true;
+			showToast('Refreshing info...', 'info');
+			try {
+				await refreshUserInfo();
+				showToast('Info updated.', 'success');
+			} catch (err) {
+				showToast('Refresh failed.', 'error');
+			}
+		}, HOLD_DURATION);
+	};
+
+	const cancelHold = () => clearTimeout(holdTimer);
+
+	floatingBtn.addEventListener('pointerdown', startHold);
+	floatingBtn.addEventListener('pointerup', cancelHold);
+	floatingBtn.addEventListener('pointerleave', cancelHold);
+
 	floatingBtn.addEventListener('click', () => {
-		toggleInterface();
+		if (!didHold) toggleInterface();
 	});
 };
 
@@ -565,39 +589,48 @@ const streakFarmingLoop = async (value = 'farm') => {
 	}
 
 	if (value === 'repair') {
-		const creationDate = userInfo.creationDate;
-		const currentStreak = userInfo.streak || 0;
-		const currentTime = getCurrentUnixTimestamp();
-		const daysSinceCreation = daysBetween(creationDate, currentTime);
-		const maxPossibleStreak = daysSinceCreation + 1;
+		const streakStartDate = userInfo.streakData?.currentStreak?.startDate;
+		const endTimestamp = streakStartDate ? toTimestamp(streakStartDate) : userInfo.creationDate;
 
-		if (currentStreak >= maxPossibleStreak) {
-			showToast(`No repair needed. Current: ${currentStreak}, max possible: ${maxPossibleStreak}.`, 'info');
+		let repairStartTimestamp = getCurrentUnixTimestamp();
+		if (lastExtendedDate === today) {
+			repairStartTimestamp -= SECONDS_PER_DAY;
+		}
+
+		const totalRounds = Math.max(0, Math.floor((repairStartTimestamp - endTimestamp) / SECONDS_PER_DAY) + 1);
+
+		if (totalRounds <= 0) {
+			showToast('Nothing to repair.', 'info');
 			setRunningState(false);
 			return;
 		}
 
-		const endTimestamp = creationDate;
-		const missingStreaks = maxPossibleStreak - currentStreak;
-
-		if (missingStreaks <= 0) {
-			GM_log('[streak] No missing streaks to repair.');
+		const confirmed = confirm(`Repair streak will farm ${totalRounds} round(s).\nEstimated streak after repair: ~${totalRounds}.\n\nProceed?`);
+		if (!confirmed) {
 			setRunningState(false);
+			showToast("Streak repair canceled.", 'error');
 			return;
 		}
 
-		GM_log(`[streak] Repairing ${missingStreaks} missing streaks...`);
+		GM_log(`[streak] Repairing ${totalRounds} rounds...`);
+		showToast(`Repairing ${totalRounds} round(s)...`, 'info', 0);
 
-		let repairTimestamp = currentTimestamp;
+		let repairTimestamp = repairStartTimestamp;
 		let repairedCount = 0;
 
-		while (isRunning && repairTimestamp >= endTimestamp && repairedCount < missingStreaks) {
+		while (isRunning && repairTimestamp >= endTimestamp) {
 			try {
 				const sessionRes = await apiService.farmSessionOnce({ startTime: repairTimestamp, endTime: repairTimestamp + SESSION_DURATION_SECONDS });
 				if (sessionRes.status < 400) {
 					repairTimestamp -= SECONDS_PER_DAY;
-					updateFarmResult('streak', 1);
+					// updateFarmResult('streak', 1);
 					repairedCount += 1;
+
+					if (repairedCount % 20 === 0) {
+						const remaining = totalRounds - repairedCount;
+						showToast(`Repairing... ${repairedCount}/${totalRounds}, ${remaining} remaining.`, 'info', 0);
+						refreshUserInfo(); //chay ngam khong await
+					}
 					await abortableDelay(runtimeSettings.delayTime);
 				} else {
 					GM_log(`[streak] repair HTTP ${sessionRes.status}, retrying...`);
@@ -610,10 +643,16 @@ const streakFarmingLoop = async (value = 'farm') => {
 			}
 		}
 
-		if (repairedCount >= missingStreaks || repairTimestamp < endTimestamp) {
-			showToast(`Repair complete: ${repairedCount} day(s) repaired.`, 'success', 30000);
-			setRunningState(false);
+		if (!isRunning) return;
+
+		try {
+			await refreshUserInfo();
+		} catch (err) {
+			GM_log(`[streak] repair get info error: ${err?.message || err}`);
 		}
+
+		showToast(`Repair complete: ${repairedCount} day(s) repaired.`, 'success', 30000);
+		setRunningState(false);
 	} else {
 		while (isRunning) {
 			try {
@@ -635,6 +674,13 @@ const streakFarmingLoop = async (value = 'farm') => {
 	}
 };
 
+const refreshUserInfo = async () => {
+	const headers = formatHeaders(jwt);
+	const freshInfo = await getUserInfo(sub, headers);
+	userInfo = { ...userInfo, ...freshInfo };
+	updateUserInfo();
+};
+
 const keepStreak = async () => {
 	const lastExtended = userInfo.streakData?.currentStreak?.lastExtendedDate;
 	if (lastExtended === getTodayDateStr()) {
@@ -644,11 +690,8 @@ const keepStreak = async () => {
 	showToast('Auto keeping streak...');
 	try {
 		const streakBefore = userInfo.streak;
-		const headers = formatHeaders(jwt);
 		await apiService.farmSessionOnce({});
-		const freshInfo = await getUserInfo(sub, headers);
-		userInfo = { ...userInfo, ...freshInfo };
-		updateUserInfo();
+		await refreshUserInfo();
 		if (userInfo.streak > streakBefore) {
 			showToast('Streak kept successfully!', 'success',0);
 		} else {
@@ -765,6 +808,8 @@ const applyAutoOpenMenu = () => {
 		loadSavedSettings();
 		setLoadingOverlay(false);
 		GM_log('[DuoFarmer] ready');
+
+		showToast('Hold the Duofarmer toggle btn to reload data :3', 'info', 10000)
 	} catch (err) {
 		GM_log(`Duofarmer init error: ${err?.message || err}`);
 		setLoadingOverlay(true, `Error: ${err?.message || 'Something went wrong. Reload to retry.'}`, true);
